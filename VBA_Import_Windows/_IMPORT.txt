@@ -1,0 +1,62 @@
+Импорт модулей в Excel VBA для WINDOWS
+================================
+
+Папка: VBA_Import_Windows
+Кодировка: UTF-8 с BOM, перевод строк Windows (CRLF).
+Mac: не Import File для русского. Используйте Module_ImportUtf8 / ImportUtf8Modules
+из этой папки. VBA_Import — тот же UTF-8 без BOM.
+
+Источник: AllModules_20260912_213840.txt
+
+1) Стандартные модули (*.bas)
+   VBA Editor -> File -> Import File...
+   Импортируйте каждый .bas. Если модуль с таким именем уже есть —
+   сначала удалите старый (Remove), затем Import.
+
+2) Листы и ThisWorkbook (*.cls)
+   Эти файлы НЕЛЬЗЯ просто Import — Excel создаст отдельный класс,
+   а не привяжет код к листу.
+   Откройте нужный модуль листа/книги в VBA Editor и вставьте код
+   НИЖЕ строк Attribute / VERSION (начиная с Option Explicit
+   или первого комментария модуля).
+
+   Соответствие имён компонентов:
+   - wsSTO  (лист/книга) [пустой]
+   - wsResearch  (лист/книга) [пустой]
+   - wsGuide  (лист/книга) [пустой]
+   - wsPipe  (лист/книга)
+   - thisWorkbook  (лист/книга)
+   - Module_calcPipe  (стандартный модуль)
+   - Module_calcCP  (стандартный модуль)
+   - Module_calcAnod  (стандартный модуль)
+   - Module_Constants  (стандартный модуль)
+   - Module_Helpers  (стандартный модуль)
+   - Module_DecimalSeparator  (стандартный модуль)
+   - Module_Research  (стандартный модуль)
+   - Module_RestoreAnodNames  (стандартный модуль)
+   - Module_PestorePipeNames  (стандартный модуль)
+   - Module_NamedRanges  (стандартный модуль)
+   - Module_DataCleanup  (стандартный модуль)
+   - Module_Logging  (стандартный модуль)
+   - wsAnod  (лист/книга)
+   - wsListCP  (лист/книга) [пустой]
+   - wsListAG  (лист/книга) [пустой]
+   - sheet1  (лист/книга) [пустой]
+   - Module_RunAllTests  (стандартный модуль)
+   - Module_ExportAllToTXT  (стандартный модуль)
+   - Module_FixCyrillic  (стандартный модуль)
+   - Module_ValidationLists  (стандартный модуль)
+   - Module_Visual  (стандартный модуль)
+   - Module_DebugHelpers  (стандартный модуль)
+   - Module_ValidationLogic  (стандартный модуль)
+   - Module_Sync  (стандартный модуль)
+   - Module_CP  (стандартный модуль)
+   - Module_AGData  (стандартный модуль)
+   - Лист2  (лист/книга) [пустой]
+
+Пустые модули листов тоже выгружены (только заголовок класса).
+Их импортировать не нужно.
+
+3) Доступ к VBProject
+   Файл -> Параметры -> Центр управления безопасностью ->
+   Параметры макросов -> «Доверять доступ к объектной модели проектов VBA».
