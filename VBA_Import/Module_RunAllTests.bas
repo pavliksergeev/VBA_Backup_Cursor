@@ -11,7 +11,6 @@ Private testRunning As Boolean
 Public Sub LogTrace(ByVal msg As String)
     If Not DEBUG_MODE Then Exit Sub
     On Error Resume Next
-    
     Dim logPath As String
     If Len(thisWorkbook.Path) = 0 Then
         logPath = Environ("TEMP") & Application.PathSeparator & "test_trace.log"
@@ -51,6 +50,45 @@ Private Sub InitLog()
     On Error GoTo 0
 End Sub
 
+' Dump TestReport A:F to the Immediate window when DEBUG_MODE is True.
+Private Sub DumpTestReportToImmediate(ByVal wsReport As Worksheet)
+    If Not DEBUG_MODE Then Exit Sub
+    If wsReport Is Nothing Then Exit Sub
+    On Error Resume Next
+
+    Dim lastRow As Long
+    Dim lastF As Long
+    lastRow = wsReport.Cells(wsReport.rows.count, 1).End(xlUp).row
+    lastF = wsReport.Cells(wsReport.rows.count, 6).End(xlUp).row
+    If lastF > lastRow Then lastRow = lastF
+    If lastRow < 1 Then Exit Sub
+
+    Debug.Print "=== TestReport ==="
+    Dim r As Long
+    Dim c As Long
+    Dim line As String
+    Dim v As Variant
+    Dim hasVal As Boolean
+    For r = 1 To lastRow
+        line = ""
+        hasVal = False
+        For c = 1 To 6
+            If c > 1 Then line = line & " | "
+            v = wsReport.Cells(r, c).Value
+            If IsError(v) Then
+                line = line & "#ERR"
+                hasVal = True
+            ElseIf Not IsEmpty(v) And CStr(v) <> "" Then
+                line = line & CStr(v)
+                hasVal = True
+            End If
+        Next c
+        If hasVal Then Debug.Print line
+    Next r
+    Debug.Print "=== TestReport end ==="
+    On Error GoTo 0
+End Sub
+
 ' ================================================================
 ' Clear the values in the listed named ranges on the Anod sheet.
 ' Waits (DoEvents) after each clear so that dependent formulas and
@@ -58,30 +96,15 @@ End Sub
 ' ================================================================
 Private Sub ClearNamedRangesForTest()
     Dim namesToClear As Variant
-    namesToClear = Array( _
-        "typeMaterial", _
-        "typeMountingAG", _
-        "typeInstallationAG", _
-        "typeDeliveryAG", _
-        "typeAG", _
-        "diameterAG", _
-        "lengthElectrodeAG", _
-        "cokeBreezeDiameterAG", _
-        "cokeBreezelengthElectrodeAG", _
-        "massOneElectrodeAG", _
-        "dissolutionRateAG", _
-        "ratedCurrent", _
-        "resistivityMaterialAG", _
-        "cokeBreezeResistivityAG", _
-        "specificRatedCurrent", _
-        "specificMaccOneMeterAG", _
-        "oneElectrodeResistanceAG", _
-        "numElectrodesAG", _
-        "weightWithoutFillingAG", _
-        "serviceLifeAG", _
-        "serviceLifeDeviation", _
-        "correctResistanceAG" _
-    )
+    Const NAMES_TO_CLEAR As String = _
+        "typeMaterial|typeMountingAG|typeInstallationAG|typeDeliveryAG|typeAG|" & _
+        "diameterAG|lengthElectrodeAG|cokeBreezeDiameterAG|cokeBreezelengthElectrodeAG|" & _
+        "massOneElectrodeAG|dissolutionRateAG|ratedCurrent|resistivityMaterialAG|" & _
+        "cokeBreezeResistivityAG|specificRatedCurrent|specificMaccOneMeterAG|" & _
+        "resistanceEndLifeAG|lengthWorkPartDeepAG|oneElectrodeResistanceAG|" & _
+        "oneElectrodeResistanceHorizAG|numElectrodesAG|weightWithoutFillingAG|" & _
+        "serviceLifeAG|serviceLifeDeviation|correctResistanceAG"
+    namesToClear = Split(NAMES_TO_CLEAR, "|")
     
     Call LogTrace("CLEAR: starting cleanup of named ranges on Anod")
     
@@ -104,8 +127,6 @@ Private Sub ClearNamedRangesForTest()
         End If
         On Error GoTo 0
         
-        ' Give Excel time to process dependent formulas, validations, events
-        DoEvents
     Next nm
     
     ' Final wait to make sure all dependencies are recalculated
@@ -138,6 +159,7 @@ Public Sub RunAllTests()
     Dim oldStatusBar As Variant
     Dim oldCursor As XlMousePointer
     Dim oldEnableCancelKey As XlEnableCancelKey
+    Dim dumpedReport As Boolean
     
     oldEnableEvents = Application.EnableEvents
     oldScreenUpdating = Application.ScreenUpdating
@@ -313,20 +335,25 @@ Public Sub RunAllTests()
     Call LogTrace("CHECK: local names verified")
 
     ' ================================================================
-    ' CHECK DIMENSIONS OF NAMED RANGES
+    ' проверка размерности расчётных имён: 1 x pipeCountCP на постоянных строках
+    ' check result name dimensions: 1 x pipeCountCP on constant rows
     ' ================================================================
     Call LogTrace("CHECK: verifying named range dimensions")
     Dim dimCheckNames As Variant
-    dimCheckNames = Array("oneElectrodeResistanceAG", "numElectrodesAG", "weightWithoutFillingAG", _
-                          "serviceLifeAG", "serviceLifeDeviation", "correctResistanceAG")
+    Dim dimCheckRows As Variant
+    Call AnodResultNameSpecs(dimCheckNames, dimCheckRows)
+    Dim dimIdx As Long
     Dim dimName As Variant
     Dim dimRng As Range
     Dim expRows As Long
-    expRows = 10
+    Dim expRow As Long
+    expRows = 1
     Dim actRows As Long, actCols As Long
     Dim pipeCountCheck As Long
     pipeCountCheck = CLng(wsAnod.Range("pipeCountCP").Value)
-    For Each dimName In dimCheckNames
+    For dimIdx = LBound(dimCheckNames) To UBound(dimCheckNames)
+        dimName = dimCheckNames(dimIdx)
+        expRow = CLng(dimCheckRows(dimIdx))
         On Error Resume Next
         Set dimRng = wsAnod.names(dimName).RefersToRange
         If Err.Number <> 0 Then
@@ -340,21 +367,27 @@ Public Sub RunAllTests()
         On Error GoTo 0
         actRows = dimRng.rows.count
         actCols = dimRng.Columns.count
-        If actRows <> expRows Or actCols <> pipeCountCheck Then
+        If actRows <> expRows Or actCols <> pipeCountCheck Or dimRng.row <> expRow Then
             ' именованный диапазон '
             ' named range '
             ' ' имеет размерность 
             ' ' has size 
+            '  строка 
+            '  row 
             ' , ожидается 
             ' , expected 
+            '  строка 
+            '  row 
             ' . тест прерван.
             ' . test aborted.
             MsgBox Ru("0438 043C 0435 043D 043E 0432 0430 043D 043D 044B 0439 0020 0434 0438 0430 043F 0430 0437 043E 043D 0020 0027") & dimName & Ru("0027 0020 0438 043C 0435 0435 0442 0020 0440 0430 0437 043C 0435 0440 043D 043E 0441 0442 044C 0020") & actRows & "x" & actCols & _
-                   Ru("002C 0020 043E 0436 0438 0434 0430 0435 0442 0441 044F 0020") & expRows & "x" & pipeCountCheck & Ru("002E 0020 0442 0435 0441 0442 0020 043F 0440 0435 0440 0432 0430 043D 002E"), vbCritical
+                   Ru("0020 0441 0442 0440 043E 043A 0430 0020") & dimRng.row & _
+                   Ru("002C 0020 043E 0436 0438 0434 0430 0435 0442 0441 044F 0020") & expRows & "x" & pipeCountCheck & _
+                   Ru("0020 0441 0442 0440 043E 043A 0430 0020") & expRow & Ru("002E 0020 0442 0435 0441 0442 0020 043F 0440 0435 0440 0432 0430 043D 002E"), vbCritical
             GoTo CleanExit
         End If
-    Next dimName
-    Call LogTrace("CHECK: all named ranges have correct dimensions (" & expRows & "x" & pipeCountCheck & ")")
+    Next dimIdx
+    Call LogTrace("CHECK: all named ranges have correct dimensions (" & expRows & "x" & pipeCountCheck & " on constant rows)")
 
     ' ================================================================
     ' PREPARE DATA ON PIPE SHEET
@@ -364,25 +397,42 @@ Public Sub RunAllTests()
     wsPipe.Range("pipeDifferentParametersNum").Value = 2
     DoEvents
 
-    With wsPipe
-        .Cells(6, 4).Value = 2.45E-07
-        .Cells(7, 4).Value = 1.22
-        .Cells(8, 4).Value = 0.017
-        .Cells(9, 4).Value = 50000
-        .Cells(10, 4).Value = 1.6
-        .Cells(11, 4).Value = 50
-        .Cells(12, 4).Value = 30
-        .Cells(13, 4).Value = 0.11
+    ' начальные значения входных параметров трубы через именованные диапазоны
+    ' initial pipe input values via named ranges
+    Call FillPipeNamedRange("pipeSteelGrade", _
+        Ru("0414 0430 043D 043D 044B 0435 0020 043E 0020 043C 0430 0440 043A 0435 0020 0441 0442 0430 043B 0438 0020 043E 0442 0441") & _
+        Ru("0443 0442 0441 0442 0432 0443 044E 0442"))
+    Call FillPipeNamedRange("pipeSteelResistivity", 0.000000245)
+    Call FillPipeNamedRange("pipeDiameter", 1.22)
+    Call FillPipeNamedRange("pipeWallThickness", 0.017)
+    Call FillPipeNamedRange("pipeInsulationResistivityStartLife", 50000)
+    Call FillPipeNamedRange("pipeLayingDepth", 1.6)
+    Call FillPipeNamedRange("soilResistivityAvg", 50)
+    Call FillPipeNamedRange("serviceLifeDesigned", 30)
+    Call FillPipeNamedRange("pipeResistivityChangeFactor", 0.11)
 
-        .Cells(6, 5).Value = 2.45E-07
-        .Cells(7, 5).Value = 1.22
-        .Cells(8, 5).Value = 0.017
-        .Cells(9, 5).Value = 50000
-        .Cells(10, 5).Value = 1.6
-        .Cells(11, 5).Value = 50
-        .Cells(12, 5).Value = 30
-        .Cells(13, 5).Value = 0.11
-    End With
+    ' синхронизация колонок и валидация списков (сталь, диаметр, kиз, Rиз0)
+    ' column sync and list validation (steel, diameter, kins, Rins0)
+    Application.StatusBar = "pipe column sync and validation..."
+    DoEvents
+    Call LogTrace("PIPE: ForceSyncFromD3 (columns + validation lists)")
+    On Error Resume Next
+    Call wsPipe.ForceSyncFromD3
+    If Err.Number <> 0 Then
+        MsgBox Ru("043E 0448 0438 0431 043A 0430 0020 043F 0440 0438 0020 0441 0438 043D 0445 0440 043E 043D 0438 0437 0430 0446 0438 0438 0020 043A 043E 043B 043E 043D 043E 043A 0020 043B 0438 0441") & _
+               Ru("0442 0430 0020 0050 0069 0070 0065 003A 0020") & Err.Description, vbCritical
+        Call LogTrace("PIPE: sync error " & Err.Description)
+        Err.Clear
+        GoTo CleanExit
+    End If
+    On Error GoTo 0
+    ' sync включает события и автопересчёт — вернуть режим теста
+    ' sync turns events and auto-calc on — restore test mode
+    Application.EnableEvents = False
+    Application.ScreenUpdating = False
+    Application.Calculation = xlCalculationManual
+    Application.DisplayAlerts = False
+    Call LogTrace("PIPE: columns synced, validation lists created")
 
     ' --- pipe calculation ---
     Application.StatusBar = "pipe calculation..."
@@ -468,6 +518,12 @@ Public Sub RunAllTests()
     End If
     On Error GoTo 0
     Call LogTrace("ANOD: protective zone calculated")
+
+    Application.EnableEvents = False
+    Application.ScreenUpdating = False
+    Application.Calculation = xlCalculationManual
+    Application.DisplayAlerts = False
+    Call LogTrace("ANOD: test mode restored after CalcProtectiveZone")
 
     ' --- read currents ---
     Dim curCP As Double, curEndCP As Double
@@ -566,32 +622,27 @@ Public Sub RunAllTests()
     Dim scIdx As Integer
     Dim startCol As Long
     startCol = 4
-        ' ================================================================
-    ' LOOP OVER SCENARIOS
+
+    Application.EnableEvents = False
+    Application.ScreenUpdating = False
+    Application.Calculation = xlCalculationManual
+
+    ' ================================================================
+    ' FILL ALL SCENARIO COLUMNS, THEN ONE Anod CALC
     ' ================================================================
     For scIdx = LBound(scenarios) To UBound(scenarios)
-        ' --- timeout check (600 seconds) ---
         If Timer - startTime > TIMEOUT_SECONDS Then
-            Call LogTrace("SCENARIO: timeout exceeded at scenario " & (scIdx + 1))
-            ' тест прерван по тайм-ауту (более 
-            ' test aborted on timeout (более 
-            '  секунд).
-            '  seconds).
-            ' пройдено сценариев: 
-            ' scenarios completed: 
-            '  из 
-            '  of 
+            Call LogTrace("SCENARIO: timeout exceeded at fill " & (scIdx + 1))
             MsgBox Ru("0442 0435 0441 0442 0020 043F 0440 0435 0440 0432 0430 043D 0020 043F 043E 0020 0442 0430 0439 043C 002D 0430 0443 0442 0443 0020 0028 0431 043E 043B 0435 0435 0020") & TIMEOUT_SECONDS & Ru("0020 0441 0435 043A 0443 043D 0434 0029 002E") & vbCrLf & _
                    Ru("043F 0440 043E 0439 0434 0435 043D 043E 0020 0441 0446 0435 043D 0430 0440 0438 0435 0432 003A 0020") & scIdx & Ru("0020 0438 0437 0020") & nScenarios, vbCritical
             GoTo CleanExit
         End If
 
         col = startCol + scIdx
-        Application.StatusBar = "testing scenario " & (scIdx + 1) & " of " & nScenarios & "... (column " & col & ")"
+        Application.StatusBar = "filling scenario " & (scIdx + 1) & " of " & nScenarios & "... (column " & col & ")"
         DoEvents
         Call LogTrace("SCENARIO " & (scIdx + 1) & ": start (col=" & col & ")")
 
-        ' --- 1. fill filters ---
         wsAnod.Cells(34, col).Value = scenarios(scIdx)(1)
         wsAnod.Cells(35, col).Value = scenarios(scIdx)(2)
         wsAnod.Cells(36, col).Value = scenarios(scIdx)(3)
@@ -605,86 +656,63 @@ Public Sub RunAllTests()
         wsAnod.Cells(56, col).Value = 0.7
         Call LogTrace("SCENARIO " & (scIdx + 1) & ": filters filled")
 
-        ' --- 2. refresh validation ---
         Module_ValidationLogic.RefreshValidationForColumn wsAnod, col
         Call LogTrace("SCENARIO " & (scIdx + 1) & ": validation refreshed")
 
-        ' --- 3. insert data ---
         Module_AGData.InsertAGDataForColumn wsAnod, col
         UpdateCPData wsAnod, col
         DoEvents
         Call LogTrace("SCENARIO " & (scIdx + 1) & ": data inserted")
 
-        ' --- 4. verify insertion ---
         If IsEmpty(wsAnod.Cells(39, col).Value) Then
             Call LogTrace("SCENARIO " & (scIdx + 1) & ": ERROR - row 39 is empty")
-            ' ошибка: для колонки 
-            ' error: for колонкand 
-            '  не подставлены данные из tableag (строка 39 пуста).
-            '  не data inserted from tableag (row 39 is empty).
             MsgBox Ru("043E 0448 0438 0431 043A 0430 003A 0020 0434 043B 044F 0020 043A 043E 043B 043E 043D 043A 0438 0020") & col & Ru("0020 043D 0435 0020 043F 043E 0434 0441 0442 0430 0432 043B 0435 043D 044B 0020 0434 0430 043D 043D 044B 0435 0020 0438 0437 0020 0054 0061 0062 006C 0065 0041 0047 0020 0028") & Ru("0441 0442 0440 043E 043A 0430 0020 0033 0039 0020 043F 0443 0441 0442 0430 0029 002E"), vbCritical
             GoTo CleanExit
         End If
+    Next scIdx
 
-        ' --- 5. anode calculation ---
-        Call Module_calcAnod.btnAnodFullCalc
+    If Timer - startTime > TIMEOUT_SECONDS Then
+        Call LogTrace("SCENARIO: timeout exceeded before anode calc")
+        MsgBox Ru("0442 0435 0441 0442 0020 043F 0440 0435 0440 0432 0430 043D 0020 043F 043E 0020 0442 0430 0439 043C 002D 0430 0443 0442 0443 0020 0028 0431 043E 043B 0435 0435 0020") & TIMEOUT_SECONDS & Ru("0020 0441 0435 043A 0443 043D 0434 0029 002E"), vbCritical
+        GoTo CleanExit
+    End If
+
+    Application.StatusBar = "anode calculation (all scenarios)..."
+    DoEvents
+    Call Module_calcAnod.btnAnodFullCalc
+    DoEvents
+    Application.EnableEvents = False
+    Application.ScreenUpdating = False
+    Application.Calculation = xlCalculationManual
+    Call LogTrace("ANOD: one full calc for all scenario columns")
+
+    For scIdx = LBound(scenarios) To UBound(scenarios)
+        col = startCol + scIdx
+        Application.StatusBar = "writing report " & (scIdx + 1) & " of " & nScenarios & "..."
         DoEvents
-        Call LogTrace("SCENARIO " & (scIdx + 1) & ": anode calculated")
+        Call LogTrace("SCENARIO " & (scIdx + 1) & ": reading results (col=" & col & ")")
 
         ' --- remember report start row for this scenario ---
         Dim reportStartRow As Long
         reportStartRow = row
 
-        ' --- 6. read results ---
+        ' читаем результаты с постоянных строк (1 x pipeCountCP)
+        ' read results from constant rows (1 x pipeCountCP)
         Dim R_p1 As Variant, N_el As Variant, T_p As Variant, G_total As Variant
-        Dim i As Long
         R_p1 = Empty: N_el = Empty: T_p = Empty: G_total = Empty
 
+        Dim iTypeSc As Integer
         Dim isCombined As Boolean
-        isCombined = (StrComp(CStr(scenarios(scIdx)(0)), "AG4", vbTextCompare) = 0) Or (scIdx = 3)
+        iTypeSc = Module_Visual.GetInstallationTypeIndex(CStr(scenarios(scIdx)(3)))
+        ' комбинированный тип 3: Rp1 вертикальный (строка 60) и горизонтальный (строка 61) пишутся на лист
+        ' combined type 3: vertical Rp1 (row 60) and horizontal Rp1 (row 61) are written to the sheet
+        isCombined = (iTypeSc = 3)
 
-        If Not isCombined Then
-            For i = 1 To 10
-                If Not IsEmpty(wsAnod.Cells(59 + i, col).Value) Then
-                    R_p1 = wsAnod.Cells(59 + i, col).Value
-                    Exit For
-                End If
-            Next i
-        Else
-            Dim l_el As Double, d_el As Double, h As Double, rho_soil As Double
-            l_el = wsAnod.Cells(40, col).Value
-            d_el = wsAnod.Cells(39, col).Value
-            h = wsAnod.Cells(51, col).Value
-            rho_soil = wsAnod.Cells(52, col).Value
-            If IsNumeric(l_el) And IsNumeric(d_el) And IsNumeric(h) And IsNumeric(rho_soil) And l_el > 0 And d_el > 0 And (4 * h - l_el) > 0 Then
-                Dim pi As Double
-                pi = Application.pi()
-                R_p1 = (rho_soil / (2 * pi * l_el)) * (Log(2 * l_el / d_el) + 0.5 * Log((4 * h + l_el) / (4 * h - l_el)))
-            Else
-                ' нет данных
-                ' no data
-                R_p1 = Ru("043D 0435 0442 0020 0434 0430 043D 043D 044B 0445")
-            End If
-        End If
+        R_p1 = wsAnod.Cells(ROW_ONE_ELECTRODE_RESISTANCE_AG, col).Value
 
-        For i = 1 To 10
-            If Not IsEmpty(wsAnod.Cells(69 + i, col).Value) Then
-                N_el = wsAnod.Cells(69 + i, col).Value
-                Exit For
-            End If
-        Next i
-        For i = 1 To 10
-            If Not IsEmpty(wsAnod.Cells(89 + i, col).Value) Then
-                T_p = wsAnod.Cells(89 + i, col).Value
-                Exit For
-            End If
-        Next i
-        For i = 1 To 10
-            If Not IsEmpty(wsAnod.Cells(79 + i, col).Value) Then
-                G_total = wsAnod.Cells(79 + i, col).Value
-                Exit For
-            End If
-        Next i
+        N_el = wsAnod.Cells(ROW_NUM_ELECTRODES_AG, col).Value
+        T_p = wsAnod.Cells(ROW_SERVICE_LIFE_AG, col).Value
+        G_total = wsAnod.Cells(ROW_WEIGHT_WITHOUT_FILLING_AG, col).Value
 
         ' модель не найдена
         ' model not found
@@ -711,8 +739,13 @@ Public Sub RunAllTests()
         expT = scenarios(scIdx)(8)
         expG = scenarios(scIdx)(9)
 
+        Dim scLabel As String
+        ' колонка A: AG1 + модель (typeAG) + способ монтажа (typeInstallationAG)
+        ' column A: AG1 + model (typeAG) + installation type (typeInstallationAG)
+        scLabel = ScenarioReportLabel(scenarios(scIdx))
+
         ' --- write R_p1 ---
-        wsReport.Cells(row, 1).Value = scenarios(scIdx)(0)
+        wsReport.Cells(row, 1).Value = scLabel
         wsReport.Cells(row, 2).Value = "r_p1"
         wsReport.Cells(row, 3).Value = expR
         wsReport.Cells(row, 4).Value = R_p1
@@ -734,7 +767,7 @@ Public Sub RunAllTests()
         row = row + 1
 
         ' --- write N_el ---
-        wsReport.Cells(row, 1).Value = scenarios(scIdx)(0)
+        wsReport.Cells(row, 1).Value = scLabel
         ' n_э
         ' n_el
         wsReport.Cells(row, 2).Value = Ru("006E 005F 044D")
@@ -758,7 +791,7 @@ Public Sub RunAllTests()
         row = row + 1
 
         ' --- write T_p ---
-        wsReport.Cells(row, 1).Value = scenarios(scIdx)(0)
+        wsReport.Cells(row, 1).Value = scLabel
         wsReport.Cells(row, 2).Value = "t_p"
         wsReport.Cells(row, 3).Value = expT
         wsReport.Cells(row, 4).Value = T_p
@@ -780,7 +813,7 @@ Public Sub RunAllTests()
         row = row + 1
 
         ' --- write G_total ---
-        wsReport.Cells(row, 1).Value = scenarios(scIdx)(0)
+        wsReport.Cells(row, 1).Value = scLabel
         ' g_общ
         ' g_total
         wsReport.Cells(row, 2).Value = Ru("0067 005F 043E 0431 0449")
@@ -803,24 +836,18 @@ Public Sub RunAllTests()
         End If
         row = row + 1
 
-        ' --- additional check for scenario 4 ---
-        If scIdx = 3 Then
-            Dim l_el_h As Double, d_el_h As Double, h_h As Double, rho_h As Double
-            l_el_h = wsAnod.Cells(40, col).Value
-            d_el_h = wsAnod.Cells(39, col).Value
-            h_h = wsAnod.Cells(51, col).Value
-            rho_h = wsAnod.Cells(52, col).Value
-            If IsNumeric(l_el_h) And IsNumeric(d_el_h) And l_el_h > 0 And d_el_h > 0 Then
-                Dim R_horiz_calc As Double
-                Dim pi2 As Double
-                pi2 = Application.pi()
-                R_horiz_calc = (rho_h / (2 * pi2 * l_el_h)) * Log(2 * l_el_h / d_el_h)
-                wsReport.Cells(row, 1).Value = CStr(scenarios(scIdx)(0)) & " horiz"
+        ' дополнительная проверка горизонтальной составляющей для комбинированного типа
+        ' extra check of the horizontal component for the combined type
+        If isCombined Then
+            Dim R_horiz_calc As Variant
+            R_horiz_calc = wsAnod.Cells(ROW_ONE_ELECTRODE_RESISTANCE_HORIZ_AG, col).Value
+            If IsNumeric(R_horiz_calc) Then
+                wsReport.Cells(row, 1).Value = ScenarioReportLabel(scenarios(scIdx), "horiz")
                 wsReport.Cells(row, 2).Value = "r_p1"
                 wsReport.Cells(row, 3).Value = 29.36
                 wsReport.Cells(row, 4).Value = R_horiz_calc
-                If R_horiz_calc > 0 Then
-                    wsReport.Cells(row, 5).Value = Abs((R_horiz_calc - 29.36) / 29.36) * 100
+                If CDbl(R_horiz_calc) > 0 Then
+                    wsReport.Cells(row, 5).Value = Abs((CDbl(R_horiz_calc) - 29.36) / 29.36) * 100
                     ' пройден
                     ' passed
                     ' не пройден
@@ -848,18 +875,17 @@ Public Sub RunAllTests()
     Call LogTrace("FIN-01: before final validation loop")
     Dim pipeCountFinal As Long
     pipeCountFinal = CLng(wsAnod.Range("pipeCountCP").Value)
-    Dim colIdx As Long
-    For colIdx = 4 To 4 + pipeCountFinal - 1
-        Call LogTrace("FIN-02: RefreshValidationForColumn col=" & colIdx)
-        Module_ValidationLogic.RefreshValidationForColumn wsAnod, colIdx
-    Next colIdx
+    Call Module_ValidationLogic.RefreshValidationForColumns(wsAnod, 4, 4 + pipeCountFinal - 1)
     Call LogTrace("FIN-03: after final validation loop")
 
     ' ================================================================
     ' FINAL REPORT FORMATTING
     ' ================================================================
     Call LogTrace("FIN-04: before AutoFit")
+    wsReport.Columns("A").WrapText = False
     wsReport.Columns("A:F").AutoFit
+    If row < 1 Then row = 1
+    wsReport.Range("A1:F" & row).EntireRow.AutoFit
     Call LogTrace("FIN-05: after AutoFit")
     
     Call LogTrace("FIN-06: before Borders")
@@ -885,6 +911,9 @@ Public Sub RunAllTests()
     failCount = Application.WorksheetFunction.CountIf(wsReport.Range("F5:F" & row), Ru("043D 0435 0020 043F 0440 043E 0439 0434 0435 043D 002A"))
     On Error GoTo 0
     Call LogTrace("FIN-11: after CountIf, pass=" & passCount & ", fail=" & failCount)
+    If DEBUG_MODE Then Debug.Print "RunAllTests: passed=" & passCount & ", failed=" & failCount
+    Call DumpTestReportToImmediate(wsReport)
+    dumpedReport = True
 
     Dim totalChecks As Long
     totalChecks = passCount + failCount
@@ -937,44 +966,24 @@ CleanExit:
     wsAnod.isProgrammaticPipeCountChange = False
     Call LogTrace("CE-03: isProgrammaticPipeCountChange = False")
     
-    ' --- restore application state (except EnableEvents) ---
+    ' restore UI, but keep calc manual / events off until after MsgBox
     Call LogTrace("CE-04: restoring application state")
     Application.DisplayAlerts = oldDisplayAlerts
     Application.StatusBar = oldStatusBar
     Application.Cursor = oldCursor
     Application.EnableCancelKey = oldEnableCancelKey
     Application.CutCopyMode = False
-    Application.ScreenUpdating = oldScreenUpdating
-    Application.Calculation = oldCalculation
-    Call LogTrace("CE-05: state restored (except EnableEvents)")
+    Application.ScreenUpdating = True
+    Call LogTrace("CE-05: state restored (calc/events still test mode)")
     
-    DoEvents
-    Call LogTrace("CE-06: DoEvents passed")
-    
-    ' NOTE: Application.Calculate is intentionally removed - it may hang on complex sheets
-    
-    ' --- activate the report sheet BEFORE enabling events ---
     If Not wsReport Is Nothing Then
         Call LogTrace("CE-07: activating report sheet")
         wsReport.Activate
-        wsReport.Range("A1").Select
         Call LogTrace("CE-08: report sheet activated")
     End If
-    DoEvents
     
-    ' --- now enable events (last step before the message) ---
-    Call LogTrace("CE-09: enabling events")
-    Application.EnableEvents = oldEnableEvents
-    Call LogTrace("CE-10: events enabled")
-    
-    DoEvents
-    Call LogTrace("CE-11: DoEvents before final MsgBox")
-    
-    ' --- ensure Excel window is in the foreground ---
-    On Error Resume Next
-    Application.WindowState = xlNormal
-    On Error GoTo 0
-    
+    If Not dumpedReport Then Call DumpTestReportToImmediate(wsReport)
+
     Call LogTrace("CE-12: before final MsgBox")
     
     If errNum <> 0 Then
@@ -986,29 +995,51 @@ CleanExit:
     ElseIf testSucceeded Then
         ' тестирование завершено.
         ' testing finished.
-        ' пройдено: 
-        ' passedо: 
-        ' , не пройдено: 
-        ' , failedо: 
-        ' подробности на листе testreport.
-        ' details on sheet testreport.
-        ' проверьте immediate window для диагностики.
-        ' check the immediate window for diagnostics.
-        MsgBox Ru("0442 0435 0441 0442 0438 0440 043E 0432 0430 043D 0438 0435 0020 0437 0430 0432 0435 0440 0448 0435 043D 043E 002E") & vbCrLf & _
-               Ru("043F 0440 043E 0439 0434 0435 043D 043E 003A 0020") & passCount & Ru("002C 0020 043D 0435 0020 043F 0440 043E 0439 0434 0435 043D 043E 003A 0020") & failCount & vbCrLf & _
-               Ru("043F 043E 0434 0440 043E 0431 043D 043E 0441 0442 0438 0020 043D 0430 0020 043B 0438 0441 0442 0435 0020 0054 0065 0073 0074 0052 0065 0070 006F 0072 0074 002E") & vbCrLf & _
-               Ru("043F 0440 043E 0432 0435 0440 044C 0442 0435 0020 0049 006D 006D 0065 0064 0069 0061 0074 0065 0020 0057 0069 006E 0064 006F 0077 0020 0434 043B 044F 0020 0434 0438 0430 0433") & Ru("043D 043E 0441 0442 0438 043A 0438 002E"), vbInformation
+        Dim doneMsg As String
+        doneMsg = Ru("0442 0435 0441 0442 0438 0440 043E 0432 0430 043D 0438 0435 0020 0437 0430 0432 0435 0440 0448 0435 043D 043E 002E") & vbCrLf & _
+                  Ru("043F 0440 043E 0439 0434 0435 043D 043E 003A 0020") & passCount & Ru("002C 0020 043D 0435 0020 043F 0440 043E 0439 0434 0435 043D 043E 003A 0020") & failCount & vbCrLf & _
+                  Ru("043F 043E 0434 0440 043E 0431 043D 043E 0441 0442 0438 0020 043D 0430 0020 043B 0438 0441 0442 0435 0020 0054 0065 0073 0074 0052 0065 0070 006F 0072 0074 002E")
+        If DEBUG_MODE Then
+            doneMsg = doneMsg & vbCrLf & Ru("043F 0440 043E 0432 0435 0440 044C 0442 0435 0020 0049 006D 006D 0065 0064 0069 0061 0074 0065 0020 0057 0069 006E 0064 006F 0077 0020 0434 043B 044F 0020 0434 0438 0430 0433") & Ru("043D 043E 0441 0442 0438 043A 0438 002E")
+        End If
+        MsgBox doneMsg, vbInformation
     End If
     
     Call LogTrace("CE-13: after final MsgBox")
+    
+    Application.EnableEvents = oldEnableEvents
+    Application.Calculation = oldCalculation
     
     testRunning = False
     Call LogTrace("CE-DONE: testRunning = False, exiting")
 End Sub
 
+' подпись сценария в колонке A: AG1, модель (typeAG), способ монтажа (typeInstallationAG)
+' scenario label in column A: AG1, model (typeAG), installation type (typeInstallationAG)
+Private Function ScenarioReportLabel(ByVal sc As Variant, Optional ByVal extra As String = "") As String
+    Dim s As String
+    s = CStr(sc(0)) & " | " & CStr(sc(5)) & " | " & CStr(sc(3))
+    If Len(extra) > 0 Then s = s & " " & extra
+    ScenarioReportLabel = s
+End Function
+
+' заполняем именованный диапазон трубы на все плечи (pipeDifferentParametersNum колонок)
+' fill a pipe named range across all sections (pipeDifferentParametersNum columns)
+Private Sub FillPipeNamedRange(ByVal rangeName As String, ByVal val As Variant)
+    Dim rng As Range
+    Dim c As Long
+    Dim nCol As Long
+    Set rng = wsPipe.Range(rangeName)
+    nCol = CLng(wsPipe.Range("pipeDifferentParametersNum").Value)
+    If nCol < 1 Then nCol = 1
+    For c = 1 To nCol
+        wsPipe.Cells(rng.row, START_COL + c - 1).Value = val
+    Next c
+End Sub
+
 ' ================================================================
-' Apply background and font colors from the wsAnod typeInstallationAG
-' (row 36) to the report rows of the current scenario
+' копируем заливку и шрифт typeInstallationAG (строка 36) на строки отчёта сценария
+' apply background and font colors from wsAnod typeInstallationAG (row 36) to the report rows
 ' ================================================================
 Private Sub ApplyScenarioColorToReport(ByVal wsAnod As Worksheet, ByVal col As Long, _
                                        ByVal wsReport As Worksheet, _
@@ -1018,7 +1049,8 @@ Private Sub ApplyScenarioColorToReport(ByVal wsAnod As Worksheet, ByVal col As L
     Dim bgColor As Long
     Dim fontColor As Long
     
-    ' Read actual colors from wsAnod row 36 (typeInstallationAG)
+    ' читаем фактические цвета со строки 36 (typeInstallationAG)
+    ' read actual colors from wsAnod row 36 (typeInstallationAG)
     bgColor = wsAnod.Cells(FILTER_START_ROW + 2, col).Interior.Color
     fontColor = wsAnod.Cells(FILTER_START_ROW + 2, col).Font.Color
     
@@ -1034,7 +1066,35 @@ CleanExit:
 End Sub
 
 ' ================================================================
-' Check named ranges dimensions
+' расчётные имена Anod: 1 x pipeCountCP на постоянных строках
+' Anod result names: 1 x pipeCountCP on constant rows
+' ================================================================
+Private Sub AnodResultNameSpecs(ByRef nmList As Variant, ByRef rowList As Variant)
+    nmList = Array( _
+        "resistanceEndLifeAG", _
+        "lengthWorkPartDeepAG", _
+        "oneElectrodeResistanceAG", _
+        "oneElectrodeResistanceHorizAG", _
+        "numElectrodesAG", _
+        "weightWithoutFillingAG", _
+        "serviceLifeAG", _
+        "serviceLifeDeviation", _
+        "correctResistanceAG")
+    rowList = Array( _
+        ROW_RESISTANCE_END_LIFE_AG, _
+        ROW_LENGTH_WORK_PART_DEEP_AG, _
+        ROW_ONE_ELECTRODE_RESISTANCE_AG, _
+        ROW_ONE_ELECTRODE_RESISTANCE_HORIZ_AG, _
+        ROW_NUM_ELECTRODES_AG, _
+        ROW_WEIGHT_WITHOUT_FILLING_AG, _
+        ROW_SERVICE_LIFE_AG, _
+        ROW_SERVICE_LIFE_DEVIATION, _
+        ROW_CORRECT_RESISTANCE_AG)
+End Sub
+
+' ================================================================
+' проверка размерности именованных диапазонов
+' check named ranges dimensions
 ' ================================================================
 Private Sub CheckNamedRanges()
     On Error Resume Next
@@ -1056,18 +1116,22 @@ Private Sub CheckNamedRanges()
     End If
 
     Dim namesToCheck As Variant
-    namesToCheck = Array("oneElectrodeResistanceAG", "numElectrodesAG", "weightWithoutFillingAG", _
-                         "serviceLifeAG", "serviceLifeDeviation", "correctResistanceAG")
+    Dim rowsToCheck As Variant
+    Call AnodResultNameSpecs(namesToCheck, rowsToCheck)
     Dim errorMsg As String
     Dim allOk As Boolean
     allOk = True
 
-    Dim nm As Variant
+    Dim iNm As Long
+    Dim nm As String
     Dim rng As Range
     Dim expectedRows As Long
-    expectedRows = 10
+    Dim expectedRow As Long
+    expectedRows = 1
 
-    For Each nm In namesToCheck
+    For iNm = LBound(namesToCheck) To UBound(namesToCheck)
+        nm = CStr(namesToCheck(iNm))
+        expectedRow = CLng(rowsToCheck(iNm))
         Set rng = Nothing
         On Error Resume Next
         Set rng = ws.names(nm).RefersToRange
@@ -1084,27 +1148,31 @@ Private Sub CheckNamedRanges()
                 Dim actualRows As Long, actualCols As Long
                 actualRows = rng.rows.count
                 actualCols = rng.Columns.count
-                If actualRows <> expectedRows Or actualCols <> pipeCount Then
+                If actualRows <> expectedRows Or actualCols <> pipeCount Or rng.row <> expectedRow Then
                     ' имя '
                     ' name '
                     ' ' имеет размерность 
                     ' ' has size 
+                    '  строка 
+                    '  row 
                     ' , ожидается 
                     ' , expected 
                     errorMsg = errorMsg & vbCrLf & Ru("0438 043C 044F 0020 0027") & nm & Ru("0027 0020 0438 043C 0435 0435 0442 0020 0440 0430 0437 043C 0435 0440 043D 043E 0441 0442 044C 0020") & actualRows & "x" & actualCols & _
-                               Ru("002C 0020 043E 0436 0438 0434 0430 0435 0442 0441 044F 0020") & expectedRows & "x" & pipeCount
+                               Ru("0020 0441 0442 0440 043E 043A 0430 0020") & rng.row & _
+                               Ru("002C 0020 043E 0436 0438 0434 0430 0435 0442 0441 044F 0020") & expectedRows & "x" & pipeCount & _
+                               Ru("0020 0441 0442 0440 043E 043A 0430 0020") & expectedRow
                     allOk = False
                 End If
             End If
         End If
         On Error GoTo 0
-    Next nm
+    Next iNm
 
     If Not allOk Then
         Call LogTrace("CheckNamedRanges: errors found")
         Call LogTrace(errorMsg)
     Else
-        Call LogTrace("CheckNamedRanges: all ranges have correct dimensions (" & expectedRows & "x" & pipeCount & ")")
+        Call LogTrace("CheckNamedRanges: all ranges have correct dimensions (" & expectedRows & "x" & pipeCount & " on constant rows)")
     End If
 End Sub
 

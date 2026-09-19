@@ -381,9 +381,9 @@ Private Sub UpdateSteelResistivity(ByVal targetCell As Range)
     On Error Resume Next
     Set wsRef = thisWorkbook.Worksheets(SHEET_STO_REF)
     If wsRef Is Nothing Then
-        ' лист 'data sto gazprom 9.2-003-2020' не найден!
-        ' лandст 'data sto gazprom 9.2-003-2020' not found!
-        MsgBox Ru("043B 0438 0441 0442 0020 0027 0064 0061 0074 0061 0020 0073 0074 006F 0020 0067 0061 007A 0070 0072 006F 006D 0020 0039 002E 0032 002D 0030 0030 0033 002D 0032 0030 0032 0030") & Ru("0027 0020 043D 0435 0020 043D 0430 0439 0434 0435 043D 0021"), vbExclamation
+        ' лист STO не найден!
+        ' sheet STO not found!
+        MsgBox Ru("043B 0438 0441 0442 0020 0027") & SHEET_STO_REF & Ru("0027 0020 043D 0435 0020 043D 0430 0439 0434 0435 043D 0021"), vbExclamation
         Exit Sub
     End If
     
@@ -514,7 +514,7 @@ End Sub
 '   3. pipeResistivityChangeFactor (fixed list: 0.05, 0.08, 0.11)
 '   4. pipeInsulationResistivityStartLife (list from Table6_1)
 ' ================================================================
-Private Sub CreatePipeValidation()
+Public Sub CreatePipeValidation()
     On Error GoTo CleanExit
     
     Dim wsPipe As Worksheet
@@ -788,6 +788,13 @@ End Function
 Public Sub SyncPipeRangesAndColumns(ByVal colBr As Long)
     On Error GoTo CleanExit
 
+    Dim oldScreenUpdating As Boolean
+    Dim oldEnableEvents As Boolean
+    Dim oldCalculation As XlCalculation
+    oldScreenUpdating = Application.ScreenUpdating
+    oldEnableEvents = Application.EnableEvents
+    oldCalculation = Application.Calculation
+
     Application.ScreenUpdating = False
     Application.EnableEvents = False
     Application.Calculation = xlCalculationManual
@@ -848,12 +855,6 @@ Public Sub SyncPipeRangesAndColumns(ByVal colBr As Long)
     totalCount = UBound(rangeNames) - LBound(rangeNames) + 1
 
     For Each rngName In rangeNames
-        If updatedCount Mod 2 = 0 And updatedCount > 0 Then
-            Application.StatusBar = "sync " & colBr & " columns... " & _
-                                    Format(updatedCount / totalCount * 100, "0") & "%"
-            DoEvents
-        End If
-        
         On Error Resume Next
         Set rng = wsPipe.Range(rngName)
         On Error GoTo 0
@@ -867,10 +868,12 @@ Public Sub SyncPipeRangesAndColumns(ByVal colBr As Long)
                                           wsPipe.Cells(startRow, startCol + colBr - 1))
                 
                 On Error Resume Next
-                wsPipe.names(rngName).Delete
+                wsPipe.names(rngName).RefersTo = newRng
+                If Err.Number <> 0 Then
+                    Err.Clear
+                    wsPipe.names.Add name:=rngName, RefersTo:=newRng
+                End If
                 On Error GoTo 0
-                
-                wsPipe.names.Add name:=rngName, RefersTo:=newRng
                 
                 updatedCount = updatedCount + 1
             Else
@@ -899,11 +902,6 @@ Public Sub SyncPipeRangesAndColumns(ByVal colBr As Long)
         progressStep = 0
         
         For newCol = sourceCol + 1 To startCol + colBr - 1
-            progressStep = progressStep + 1
-            Application.StatusBar = "copying columns... " & _
-                                    Format(progressStep / progressTotal * 100, "0") & "%"
-            DoEvents
-            
             ' 1. copy the whole column (data + formats)
             wsPipe.Columns(sourceCol).Copy Destination:=wsPipe.Columns(newCol)
             
@@ -1045,9 +1043,9 @@ CleanExit:
     wsPipe.Protect Password:="ptm", AllowInsertingRows:=False, AllowDeletingRows:=False, _
                     AllowSorting:=False, AllowFiltering:=False, UserInterfaceOnly:=True
     Application.CutCopyMode = False
-    Application.ScreenUpdating = True
-    Application.EnableEvents = True
-    Application.Calculation = xlCalculationAutomatic
+    Application.ScreenUpdating = oldScreenUpdating
+    Application.EnableEvents = oldEnableEvents
+    Application.Calculation = oldCalculation
     Application.StatusBar = False
     On Error GoTo 0
 End Sub
@@ -1077,24 +1075,11 @@ Public Sub ForceSyncFromD3()
 End Sub
 
 ' ================================================================
-' sheet activate event
-' ================================================================
-Private Sub Worksheet_Activate()
-    Call CreatePipeValidation
-End Sub
-
-' ================================================================
 ' sheet change event
 ' ================================================================
 Private Sub Worksheet_Change(ByVal Target As Range)
-    If Application.EnableEvents = False Then
-        Application.EnableEvents = True
-        Debug.Print "enableevents was false, restored in worksheet_change (pipe)"
-    End If
-    If Not Application.EnableEvents Then Application.EnableEvents = True
-    On Error GoTo CleanExit
-    
     If isUpdating Then Exit Sub
+    On Error GoTo CleanExit
 
     ' ================================================================
     ' 1. check for change of pipedifferentparametersnum (d3)
@@ -1152,9 +1137,6 @@ Private Sub Worksheet_Change(ByVal Target As Range)
             DoEvents
             
             Call SyncPipeRangesAndColumns(colBr)
-            
-            ' --- create validation for steel, diameter, Rins0 ---
-            Call CreatePipeValidation
             
             Application.StatusBar = "synchronization finished for " & colBr & " columns"
             DoEvents

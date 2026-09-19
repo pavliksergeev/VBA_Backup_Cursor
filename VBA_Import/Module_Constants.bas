@@ -21,6 +21,19 @@ Public Const MIN_COL As Long = 1
 Public Const HEADER_ROW As Long = 2
 Public Const MODEL_ROW As Long = 38
 Public Const DATA_START_ROW As Long = 39
+' расчётные строки Anod (одна строка на параметр, не на тип монтажа)
+' calculation result rows on Anod (one row per parameter, not per installation type)
+Public Const ROW_RESISTANCE_END_LIFE_AG As Long = 58
+Public Const ROW_LENGTH_WORK_PART_DEEP_AG As Long = 59
+Public Const ROW_ONE_ELECTRODE_RESISTANCE_AG As Long = 60
+' Rp1 горизонтального электрода для комбинированного монтажа
+' Rp1 of the horizontal electrode for combined installation
+Public Const ROW_ONE_ELECTRODE_RESISTANCE_HORIZ_AG As Long = 61
+Public Const ROW_NUM_ELECTRODES_AG As Long = 70
+Public Const ROW_WEIGHT_WITHOUT_FILLING_AG As Long = 80
+Public Const ROW_SERVICE_LIFE_AG As Long = 90
+Public Const ROW_SERVICE_LIFE_DEVIATION As Long = 100
+Public Const ROW_CORRECT_RESISTANCE_AG As Long = 110
 Public Const CP_MODEL_ROW As Long = 26
 Public Const CP_HYPERLINK_ROW As Long = 27
 Public Const CP_CURRENT_ROW As Long = 29
@@ -36,7 +49,7 @@ Public Const FILTER_END_ROW As Long = 38
 ' ================================================================
 ' 4. debug mode
 ' ================================================================
-Public Const DEBUG_MODE As Boolean = True ' False/True
+Public Const DEBUG_MODE As Boolean = False ' False/True
 
 ' ================================================================
 ' 5. sheet names (after rename)
@@ -77,6 +90,19 @@ Public Const SCALAR_NAMES As String = _
     "pipeShiftPotentialPoint|" & _
     "pipeInputResistance|" & _
     "pipeInputResistanceEndLife"
+
+' Anod 1 x pipeCountCP names (same list as NeedRestoreAnodNames)
+Public Const ANOD_RANGE_NAMES_1ROW As String = _
+    "anodHeaders|avgProtectionCurrentCPOverLife|currentCP|currentEndLifeCP|depthToMidAG|" & _
+    "diameterAG|dissolutionRateAG|drainWireCrossSection|factorCurrent|factorSoilHeterogeneity|" & _
+    "factorUseMassAG|factorVoltageMarginCP|lengthElectrodeAG|lengthWireAGtoPipe|lengthWireCPtoPipe|" & _
+    "lengthWorkPartDeepAG|massOneElectrodeAG|minDistancePipeToAG|nominalOutputCurrenCP|" & _
+    "nominalOutputPowerCP|nominalOutputVoltageCP|pipeLengthCP|powerEndLifeCP|ratedCurrent|" & _
+    "resistanceEndLifeAG|resistivity_i_layerDeepAG|resistivityMaterialAG|resistivitySoilAG|" & _
+    "specificMaccOneMeterAG|specificRatedCurrent|typeAG|typeCP|typeDeliveryAG|typeInstallationAG|" & _
+    "typeMaterial|typeMountingAG|voltageEndLifeCP|webLinkCP|wireResistivity|wiresResistanceCPpipeAG|" & _
+    "cokeBreezeDiameterAG|cokeBreezelengthElectrodeAG|cokeBreezeResistivityAG|" & _
+    "correctResistanceAG|numElectrodesAG|oneElectrodeResistanceAG|oneElectrodeResistanceHorizAG|serviceLifeAG|serviceLifeDeviation|weightWithoutFillingAG"
 
 ' ================================================================
 ' 7.1. scalar-name array for checks
@@ -306,7 +332,7 @@ Sub QuickCheck()
     found = 0
     
     For Each vbComp In thisWorkbook.VBProject.VBComponents
-        If vbComp.name <> "Module_Constants" And vbComp.name <> "Module_Logging" Then
+        If vbComp.name <> "Module_Constants" Then
             For line = 1 To vbComp.CodeModule.CountOfLines
                 codeLine = vbComp.CodeModule.Lines(line, 1)
                 Dim name As Variant

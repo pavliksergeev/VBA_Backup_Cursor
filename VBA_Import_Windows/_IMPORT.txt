@@ -3,8 +3,9 @@
 
 Папка: VBA_Import_Windows
 Кодировка: UTF-8 с BOM, перевод строк Windows (CRLF).
-Mac: не Import File для русского. Используйте Module_ImportUtf8 / ImportUtf8Modules
-из этой папки. VBA_Import — тот же UTF-8 без BOM.
+Mac: не File -> Import File для русского. Откройте файл в Cursor
+и вставьте код ниже Attribute / VERSION через буфер Unicode.
+VBA_Import — тот же текст, UTF-8 без BOM.
 
 Источник: AllModules_20260912_213840.txt
 
@@ -37,17 +38,14 @@ Mac: не Import File для русского. Используйте Module_Imp
    - Module_PestorePipeNames  (стандартный модуль)
    - Module_NamedRanges  (стандартный модуль)
    - Module_DataCleanup  (стандартный модуль)
-   - Module_Logging  (стандартный модуль)
    - wsAnod  (лист/книга)
    - wsListCP  (лист/книга) [пустой]
    - wsListAG  (лист/книга) [пустой]
    - sheet1  (лист/книга) [пустой]
    - Module_RunAllTests  (стандартный модуль)
    - Module_ExportAllToTXT  (стандартный модуль)
-   - Module_FixCyrillic  (стандартный модуль)
    - Module_ValidationLists  (стандартный модуль)
    - Module_Visual  (стандартный модуль)
-   - Module_DebugHelpers  (стандартный модуль)
    - Module_ValidationLogic  (стандартный модуль)
    - Module_Sync  (стандартный модуль)
    - Module_CP  (стандартный модуль)

@@ -309,18 +309,9 @@ Public Sub btnPipeCalculate()
     Dim denominator As Double
 
     Dim i As Long
-    Dim progressStep As Double
-    progressStep = 40 / colBr
     
     ' main calculation loop
     For i = 1 To colBr
-        ' update progress
-        If i Mod 5 = 0 Or i = colBr Then
-            Application.StatusBar = "pipe calc for " & colBr & " sections... computing " & _
-                                    Format(30 + i * progressStep, "0") & "%"
-            DoEvents
-        End If
-        
         ' read data for the current section
         On Error Resume Next
         rho_steel = CDbl(arrSteelResist(1, i))

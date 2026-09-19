@@ -73,6 +73,7 @@ Sub CleanTableAG()
         End If
     Next col
     
+    Call Module_ValidationLists.InvalidateAGListCache
     MsgBox "table " & TABLE_AG & " cleaned of invalid characters." & vbCrLf & _
            "all invalid characters replaced with '_'.", vbInformation
     
@@ -232,6 +233,7 @@ Sub CleanTableMounting()
         End If
     Next col
     
+    Call Module_ValidationLists.InvalidateAGListCache
     MsgBox "table TableMounting cleaned of invalid characters." & vbCrLf & _
            "all invalid characters replaced with '_'.", vbInformation
     

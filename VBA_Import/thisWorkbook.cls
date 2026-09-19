@@ -49,6 +49,20 @@ Private Sub Workbook_Open()
     End If
     On Error GoTo 0
 
+    ' === check/restore Anod named ranges (dynamic 1xn and scalar 1x1) ===
+    If DEBUG_MODE Then Debug.Print ">>> restoring Anod named ranges if needed"
+    Application.StatusBar = "checking Anod named ranges..."
+    DoEvents
+    On Error Resume Next
+    Call RestoreAnodNamedRanges(True)
+    If Err.Number <> 0 Then
+        If DEBUG_MODE Then Debug.Print ">>> Anod named range restore error: " & Err.Description
+        Err.Clear
+    Else
+        If DEBUG_MODE Then Debug.Print ">>> Anod named ranges checked"
+    End If
+    On Error GoTo 0
+
     ' === lock Anod columns ===
     If DEBUG_MODE Then Debug.Print ">>> locking columns a, b, c"
     Application.StatusBar = "locking columns a, b, c..."
@@ -100,10 +114,7 @@ Private Sub Workbook_Open()
     pipeCountInit = ws.Range("pipeCountCP").Value
     colBrInit = SafeNumericValue(pipeCountInit, 1)
 
-    Dim colIdxInit As Long
-    For colIdxInit = START_COL To START_COL + colBrInit - 1
-        Call Module_ValidationLogic.RefreshValidationForColumn(ws, colIdxInit)
-    Next colIdxInit
+    Call Module_ValidationLogic.RefreshValidationForColumns(ws, START_COL, START_COL + colBrInit - 1)
 
     If Err.Number <> 0 Then
         If DEBUG_MODE Then Debug.Print ">>> validation initialization error: " & Err.Description
@@ -129,13 +140,13 @@ Private Sub Workbook_Open()
 
     ' === protect sheets STO, Guide, Pipe, ListCP, ListAG ===
     If DEBUG_MODE Then Debug.Print ">>> protecting sheets STO, Guide, Pipe, ListCP, ListAG"
-    Dim wsSTO As Worksheet, wsGuide As Worksheet, wsPipe As Worksheet
+    Dim wsSTO As Worksheet, wsGuide As Worksheet, wsPipeSheet As Worksheet
     Dim wsListCP As Worksheet, wsListAG As Worksheet
 
     On Error Resume Next
     Set wsSTO = thisWorkbook.Worksheets(SHEET_STO)
     Set wsGuide = thisWorkbook.Worksheets(SHEET_GUIDE)
-    Set wsPipe = thisWorkbook.Worksheets(SHEET_PIPE)
+    Set wsPipeSheet = thisWorkbook.Worksheets(SHEET_PIPE)
     Set wsListCP = thisWorkbook.Worksheets(SHEET_LIST_CP)
     Set wsListAG = thisWorkbook.Worksheets(SHEET_LIST_AG)
     On Error GoTo 0
@@ -156,19 +167,41 @@ Private Sub Workbook_Open()
         If DEBUG_MODE Then Debug.Print ">>> Guide sheet protected"
     End If
 
-    If Not wsPipe Is Nothing Then
-        wsPipe.Unprotect Password:="ptm"
-        wsPipe.Cells.Locked = True
+    If Not wsPipeSheet Is Nothing Then
+        wsPipeSheet.Unprotect Password:="ptm"
+
+        If DEBUG_MODE Then Debug.Print ">>> restoring Pipe named ranges if needed"
+        Application.StatusBar = "checking Pipe named ranges..."
+        DoEvents
+        On Error Resume Next
+        Call RestorePipeNamedRanges(True)
+        If Err.Number <> 0 Then
+            If DEBUG_MODE Then Debug.Print ">>> Pipe named range restore error: " & Err.Description
+            Err.Clear
+        Else
+            If DEBUG_MODE Then Debug.Print ">>> Pipe named ranges checked"
+        End If
+        On Error GoTo 0
+
+        wsPipeSheet.Cells.Locked = True
 
         ' Unlock Pipe named ranges
         Dim nmPipe As name
-        For Each nmPipe In wsPipe.names
+        For Each nmPipe In wsPipeSheet.names
             On Error Resume Next
             nmPipe.RefersToRange.Locked = False
             On Error GoTo 0
         Next nmPipe
 
-        wsPipe.Protect Password:="ptm", AllowInsertingRows:=False, AllowDeletingRows:=False, _
+        On Error Resume Next
+        Call wsPipe.CreatePipeValidation
+        If Err.Number <> 0 Then
+            If DEBUG_MODE Then Debug.Print ">>> Pipe validation create error: " & Err.Description
+            Err.Clear
+        End If
+        On Error GoTo 0
+
+        wsPipeSheet.Protect Password:="ptm", AllowInsertingRows:=False, AllowDeletingRows:=False, _
                         AllowSorting:=False, AllowFiltering:=False, UserInterfaceOnly:=True
         If DEBUG_MODE Then Debug.Print ">>> Pipe sheet protected"
     End If

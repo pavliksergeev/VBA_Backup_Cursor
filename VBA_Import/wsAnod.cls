@@ -1,4 +1,4 @@
-﻿VERSION 1.0 CLASS
+VERSION 1.0 CLASS
 BEGIN
   MultiUse = -1  'True
 END
@@ -28,13 +28,22 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     If isUpdating Then Exit Sub
     isUpdating = True
     
-    ' Ignore changes outside filters and key cells
-    If Target.row < 34 Or Target.row > 38 Then
-        If Intersect(Target, Me.Range("pipeCountCP")) Is Nothing And _
-           Intersect(Target, Me.Range("maxProtectPotential")) Is Nothing Then
-            isUpdating = False
-            Exit Sub
-        End If
+    ' Ignore changes outside filters, typeCP, CP I/U, and key scalars
+    Dim watched As Boolean
+    watched = False
+    If Target.row >= FILTER_START_ROW And Target.row <= FILTER_END_ROW Then watched = True
+    If Not watched Then
+        If Not Intersect(Target, Me.Range("pipeCountCP")) Is Nothing Then watched = True
+    End If
+    If Not watched Then
+        If Not Intersect(Target, Me.Range("maxProtectPotential")) Is Nothing Then watched = True
+    End If
+    If Not watched Then
+        If Target.row = CP_MODEL_ROW Or Target.row = CP_CURRENT_ROW Or Target.row = CP_VOLTAGE_ROW Then watched = True
+    End If
+    If Not watched Then
+        isUpdating = False
+        Exit Sub
     End If
     
     On Error GoTo CleanExit
@@ -164,11 +173,25 @@ Private Sub Worksheet_Change(ByVal Target As Range)
         
         ' Force-refresh validation for neighboring columns
         Dim colIdxAll As Long
+        Dim wasProtNeighbors As Boolean
+        wasProtNeighbors = Me.ProtectContents
+        If wasProtNeighbors Then
+            On Error Resume Next
+            Me.Unprotect Password:="ptm"
+            If Err.Number <> 0 Then Err.Clear
+            On Error GoTo 0
+        End If
         For colIdxAll = startCol To endCol
             If colIdxAll <> Target.Column Then
-                Call Module_ValidationLogic.RefreshValidationForColumn(Me, colIdxAll)
+                Call Module_ValidationLogic.RefreshValidationForColumn(Me, colIdxAll, True)
             End If
         Next colIdxAll
+        If wasProtNeighbors Then
+            On Error Resume Next
+            Me.Protect Password:="ptm", UserInterfaceOnly:=True
+            If Err.Number <> 0 Then Err.Clear
+            On Error GoTo 0
+        End If
         
         GoTo CleanExit
     End If
@@ -266,14 +289,6 @@ Private Sub HandlePipeCountChange(ByVal newCount As Long)
     Call Module_Sync.SyncAnodColumns(ws, newCount)
     Call Module_Sync.UpdateNamedRanges(ws, newCount)
     
-    Dim colIdx As Long
-    For colIdx = START_COL To START_COL + newCount - 1
-        Call Module_ValidationLogic.RefreshValidationForColumn(ws, colIdx)
-    Next colIdx
-    
-    Call Module_Visual.UpdateVisibilityForAllColumns(ws)
-    Call Module_Visual.UpdateColorsForAllColumns(ws)
-    
     ws.Calculate
     
 CleanExit:
@@ -334,6 +349,10 @@ End Sub
 Private Sub ProcessFilterChange(ByVal ws As Worksheet, ByVal col As Long, ByVal modelChanged As Boolean)
     Debug.Print "ProcessFilterChange: col = " & col & ", modelChanged = " & modelChanged
     
+    Dim oldEvents As Boolean
+    Dim oldScreen As Boolean
+    oldEvents = Application.EnableEvents
+    oldScreen = Application.ScreenUpdating
     Application.EnableEvents = False
     Application.ScreenUpdating = False
     
@@ -363,8 +382,8 @@ Private Sub ProcessFilterChange(ByVal ws As Worksheet, ByVal col As Long, ByVal 
     Call Module_Visual.UpdateVisibilityForAllColumns(ws)
     Call Module_Visual.UpdateColorsForAllColumns(ws)
     
-    Application.EnableEvents = True
-    Application.ScreenUpdating = True
+    Application.EnableEvents = oldEvents
+    Application.ScreenUpdating = oldScreen
 End Sub
 
 Sub btnCalcProtectiveZone()

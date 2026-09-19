@@ -13,7 +13,7 @@ Private Const SHEET_ANOD As String = "Anod"
 ' ================================================================
 ' main restore procedure (update without delete)
 ' ================================================================
-Public Sub RestoreAnodNamedRanges()
+Public Sub RestoreAnodNamedRanges(Optional ByVal silent As Boolean = False)
     On Error GoTo CleanExit
 
     Dim oldCalc As XlCalculation
@@ -38,7 +38,9 @@ Public Sub RestoreAnodNamedRanges()
         ' лandст '
         ' ' не найден!
         ' ' not found!
-        MsgBox Ru("043B 0438 0441 0442 0020 0027") & SHEET_ANOD & Ru("0027 0020 043D 0435 0020 043D 0430 0439 0434 0435 043D 0021"), vbCritical
+        If Not silent Then
+            MsgBox Ru("043B 0438 0441 0442 0020 0027") & SHEET_ANOD & Ru("0027 0020 043D 0435 0020 043D 0430 0439 0434 0435 043D 0021"), vbCritical
+        End If
         GoTo CleanExit
     End If
 
@@ -81,6 +83,8 @@ Public Sub RestoreAnodNamedRanges()
 
     ' --- update range names (without deletion) ---
     Call UpdateRangeOnlyAnodNames(wsAnod, colBr)
+    ' --- scalar names 1x1 ---
+    Call CreateScalarNamesOnly
 
     Application.StatusBar = "restore finished: " & colBr & " columns"
 
@@ -90,13 +94,15 @@ Public Sub RestoreAnodNamedRanges()
     ' ' restored!
     ' количество колонок: 
     ' column count: 
-    ' всего диапазонных имен: 49
-    ' total range names: 49
+    ' всего диапазонных имен: 50
+    ' total range names: 50
     ' восстановление завершено
     ' restore finished
-    MsgBox Ru("0438 043C 0435 043D 043E 0432 0430 043D 043D 044B 0435 0020 0434 0438 0430 043F 0430 0437 043E 043D 044B 0020 043B 0438 0441 0442 0430 0020 0027") & SHEET_ANOD & Ru("0027 0020 0432 043E 0441 0441 0442 0430 043D 043E 0432 043B 0435 043D 044B 0021") & vbCrLf & _
-           Ru("043A 043E 043B 0438 0447 0435 0441 0442 0432 043E 0020 043A 043E 043B 043E 043D 043E 043A 003A 0020") & colBr & vbCrLf & _
-           Ru("0432 0441 0435 0433 043E 0020 0434 0438 0430 043F 0430 0437 043E 043D 043D 044B 0445 0020 0438 043C 0435 043D 003A 0020 0034 0039"), vbInformation, Ru("0432 043E 0441 0441 0442 0430 043D 043E 0432 043B 0435 043D 0438 0435 0020 0437 0430 0432 0435 0440 0448 0435 043D 043E")
+    If Not silent Then
+        MsgBox Ru("0438 043C 0435 043D 043E 0432 0430 043D 043D 044B 0435 0020 0434 0438 0430 043F 0430 0437 043E 043D 044B 0020 043B 0438 0441 0442 0430 0020 0027") & SHEET_ANOD & Ru("0027 0020 0432 043E 0441 0441 0442 0430 043D 043E 0432 043B 0435 043D 044B 0021") & vbCrLf & _
+               Ru("043A 043E 043B 0438 0447 0435 0441 0442 0432 043E 0020 043A 043E 043B 043E 043D 043E 043A 003A 0020") & colBr & vbCrLf & _
+               Ru("0432 0441 0435 0433 043E 0020 0434 0438 0430 043F 0430 0437 043E 043D 043D 044B 0445 0020 0438 043C 0435 043D 003A 0020 0035 0030"), vbInformation, Ru("0432 043E 0441 0441 0442 0430 043D 043E 0432 043B 0435 043D 0438 0435 0020 0437 0430 0432 0435 0440 0448 0435 043D 043E")
+    End If
 
 CleanExit:
     Application.Cursor = xlDefault
@@ -123,31 +129,25 @@ Private Function NeedRestoreAnodNames(ByVal wsAnod As Worksheet) As Boolean
         colBr = 1
     End If
 
-    ' name lists by row count
-    Const NAMES_1ROW As String = _
-        "anodHeaders|avgProtectionCurrentCPOverLife|currentCP|currentEndLifeCP|depthToMidAG|" & _
-        "diameterAG|dissolutionRateAG|drainWireCrossSection|factorCurrent|factorSoilHeterogeneity|" & _
-        "factorUseMassAG|factorVoltageMarginCP|lengthElectrodeAG|lengthWireAGtoPipe|lengthWireCPtoPipe|" & _
-        "lengthWorkPartDeepAG|massOneElectrodeAG|minDistancePipeToAG|nominalOutputCurrenCP|" & _
-        "nominalOutputPowerCP|nominalOutputVoltageCP|pipeLengthCP|powerEndLifeCP|ratedCurrent|" & _
-        "resistanceEndLifeAG|resistivity_i_layerDeepAG|resistivityMaterialAG|resistivitySoilAG|" & _
-        "specificMaccOneMeterAG|specificRatedCurrent|typeAG|typeCP|typeDeliveryAG|typeInstallationAG|" & _
-        "typeMaterial|typeMountingAG|voltageEndLifeCP|webLinkCP|wireResistivity|wiresResistanceCPpipeAG|" & _
-        "cokeBreezeDiameterAG|cokeBreezelengthElectrodeAG|cokeBreezeResistivityAG"
+    ' name lists by row count (1xN list lives in Module_Constants)
+    Const NAMES_SCALAR As String = _
+        "factorMutualInfluence|lengthProtectiveZone|maxProtectPotential|minProtectPotential|" & _
+        "naturalPotential|pipeCountCP|pipeLength|pipeShiftPotentialMin|pipeShiftPotentialPoint"
 
-    Const NAMES_10ROWS As String = _
-        "correctResistanceAG|numElectrodesAG|oneElectrodeResistanceAG|serviceLifeAG|serviceLifeDeviation|weightWithoutFillingAG"
-
-    ' check single-row names (43)
+    ' check single-row names (50, including calculation results)
     Dim arr1 As Variant
-    arr1 = Split(NAMES_1ROW, "|")
     Dim i As Long
+    Dim nm1 As String
+    Dim rng1 As Range
+    Dim arrS As Variant
+    Dim idxS As Long
+    Dim nmS As String
+    Dim rngS As Range
+    arr1 = Split(ANOD_RANGE_NAMES_1ROW, "|")
     For i = LBound(arr1) To UBound(arr1)
-        Dim nm1 As String
         nm1 = Trim(arr1(i))
         If Len(nm1) = 0 Then GoTo Next1
         
-        Dim rng1 As Range
         Set rng1 = Nothing
         Set rng1 = wsAnod.names(nm1).RefersToRange
         If Err.Number <> 0 Or rng1 Is Nothing Then
@@ -177,43 +177,29 @@ Private Function NeedRestoreAnodNames(ByVal wsAnod As Worksheet) As Boolean
 Next1:
     Next i
 
-    ' check ten-row names (6)
-    Dim arr10 As Variant
-    arr10 = Split(NAMES_10ROWS, "|")
-    For i = LBound(arr10) To UBound(arr10)
-        Dim nm10 As String
-        nm10 = Trim(arr10(i))
-        If Len(nm10) = 0 Then GoTo Next10
-        
-        Dim rng10 As Range
-        Set rng10 = Nothing
-        Set rng10 = wsAnod.names(nm10).RefersToRange
-        If Err.Number <> 0 Or rng10 Is Nothing Then
-            ' имя 
-            ' name 
-            '  не найдено, требуется восстановление
-            '  not found, restore required
-            Debug.Print Ru("0438 043C 044F 0020") & nm10 & Ru("0020 043D 0435 0020 043D 0430 0439 0434 0435 043D 043E 002C 0020 0442 0440 0435 0431 0443 0435 0442 0441 044F 0020 0432 043E 0441 0441 0442 0430 043D 043E 0432 043B 0435 043D") & Ru("0438 0435")
+    ' скалярные имена 1x1
+    ' scalar names 1x1
+    arrS = Split(NAMES_SCALAR, "|")
+    For idxS = LBound(arrS) To UBound(arrS)
+        nmS = Trim(arrS(idxS))
+        If Len(nmS) = 0 Then GoTo NextS
+        Set rngS = Nothing
+        Err.Clear
+        Set rngS = wsAnod.names(nmS).RefersToRange
+        If Err.Number <> 0 Or rngS Is Nothing Then
+            Debug.Print Ru("0438 043C 044F 0020") & nmS & Ru("0020 043D 0435 0020 043D 0430 0439 0434 0435 043D 043E 002C 0020 0442 0440 0435 0431 0443 0435 0442 0441 044F 0020 0432 043E 0441 0441 0442 0430 043D 043E 0432 043B 0435 043D") & Ru("0438 0435")
             NeedRestoreAnodNames = True
             Exit Function
         End If
-        If rng10.Columns.count <> colBr Or rng10.rows.count <> 10 Then
-            ' имя 
-            ' name 
-            '  имеет размерность 
-            '  has size 
-            ' , ожидается 10x
-            ' , expected 10x
-            ' , требуется восстановление
-            ' , restore required
-            Debug.Print Ru("0438 043C 044F 0020") & nm10 & Ru("0020 0438 043C 0435 0435 0442 0020 0440 0430 0437 043C 0435 0440 043D 043E 0441 0442 044C 0020") & rng10.rows.count & "x" & rng10.Columns.count & _
-                        Ru("002C 0020 043E 0436 0438 0434 0430 0435 0442 0441 044F 0020 0031 0030 0078") & colBr & Ru("002C 0020 0442 0440 0435 0431 0443 0435 0442 0441 044F 0020 0432 043E 0441 0441 0442 0430 043D 043E 0432 043B 0435 043D 0438 0435")
+        If rngS.Columns.count <> 1 Or rngS.rows.count <> 1 Then
+            Debug.Print Ru("0438 043C 044F 0020") & nmS & Ru("0020 0438 043C 0435 0435 0442 0020 0440 0430 0437 043C 0435 0440 043D 043E 0441 0442 044C 0020") & rngS.rows.count & "x" & rngS.Columns.count & _
+                        Ru("002C 0020 043E 0436 0438 0434 0430 0435 0442 0441 044F 0020 0031 0078 0031 002C 0020 0442 0440 0435 0431 0443 0435 0442 0441 044F 0020 0432 043E 0441 0441 0442 0430 043D 043E 0432 043B 0435 043D 0438 0435")
             NeedRestoreAnodNames = True
             Exit Function
         End If
         Err.Clear
-Next10:
-    Next i
+NextS:
+    Next idxS
 
     NeedRestoreAnodNames = False
     On Error GoTo 0
@@ -337,22 +323,21 @@ Private Sub UpdateRangeOnlyAnodNames(ByVal wsAnod As Worksheet, ByVal colBr As L
     Call SetRangeName1RowR1C1(wsAnod, "cokeBreezeDiameterAG", 41, startCol, endCol)
     Call SetRangeName1RowR1C1(wsAnod, "cokeBreezelengthElectrodeAG", 42, startCol, endCol)
     Call SetRangeName1RowR1C1(wsAnod, "cokeBreezeResistivityAG", 47, startCol, endCol)
+    Call SetRangeName1RowR1C1(wsAnod, "oneElectrodeResistanceAG", ROW_ONE_ELECTRODE_RESISTANCE_AG, startCol, endCol)
+    Call SetRangeName1RowR1C1(wsAnod, "oneElectrodeResistanceHorizAG", ROW_ONE_ELECTRODE_RESISTANCE_HORIZ_AG, startCol, endCol)
+    Call SetRangeName1RowR1C1(wsAnod, "numElectrodesAG", ROW_NUM_ELECTRODES_AG, startCol, endCol)
+    Call SetRangeName1RowR1C1(wsAnod, "weightWithoutFillingAG", ROW_WEIGHT_WITHOUT_FILLING_AG, startCol, endCol)
+    Call SetRangeName1RowR1C1(wsAnod, "serviceLifeAG", ROW_SERVICE_LIFE_AG, startCol, endCol)
+    Call SetRangeName1RowR1C1(wsAnod, "serviceLifeDeviation", ROW_SERVICE_LIFE_DEVIATION, startCol, endCol)
+    Call SetRangeName1RowR1C1(wsAnod, "correctResistanceAG", ROW_CORRECT_RESISTANCE_AG, startCol, endCol)
 
-    ' ================================================================
-    ' 2. update/create range names (10 rows x colBr)
-    ' ================================================================
-    Call SetRangeName10RowsR1C1(wsAnod, "correctResistanceAG", 110, startCol, endCol)
-    Call SetRangeName10RowsR1C1(wsAnod, "numElectrodesAG", 70, startCol, endCol)
-    Call SetRangeName10RowsR1C1(wsAnod, "oneElectrodeResistanceAG", 60, startCol, endCol)
-    Call SetRangeName10RowsR1C1(wsAnod, "serviceLifeAG", 90, startCol, endCol)
-    Call SetRangeName10RowsR1C1(wsAnod, "serviceLifeDeviation", 100, startCol, endCol)
-    Call SetRangeName10RowsR1C1(wsAnod, "weightWithoutFillingAG", 80, startCol, endCol)
+    Call Module_Visual.UpdateVisibilityForAllColumns(wsAnod)
 
     ' обновлены диапазонные имена на листе anod (
     ' range names updated on sheet anod (
-    '  колонок, 49 шт.)
-    '  columns, 49 pcs)
-    Debug.Print Ru("043E 0431 043D 043E 0432 043B 0435 043D 044B 0020 0434 0438 0430 043F 0430 0437 043E 043D 043D 044B 0435 0020 0438 043C 0435 043D 0430 0020 043D 0430 0020 043B 0438 0441 0442") & Ru("0435 0020 0041 006E 006F 0064 0020 0028") & colBr & Ru("0020 043A 043E 043B 043E 043D 043E 043A 002C 0020 0034 0039 0020 0448 0442 002E 0029")
+    '  колонок, 50 шт.)
+    '  columns, 50 pcs)
+    Debug.Print Ru("043E 0431 043D 043E 0432 043B 0435 043D 044B 0020 0434 0438 0430 043F 0430 0437 043E 043D 043D 044B 0435 0020 0438 043C 0435 043D 0430 0020 043D 0430 0020 043B 0438 0441 0442") & Ru("0435 0020 0041 006E 006F 0064 0020 0028") & colBr & Ru("0020 043A 043E 043B 043E 043D 043E 043A 002C 0020 0035 0030 0020 0448 0442 002E 0029")
 
 CleanExit:
 End Sub
@@ -365,40 +350,6 @@ Private Sub SetRangeName1RowR1C1(ByVal ws As Worksheet, ByVal name As String, By
 
     Dim ref As String
     ref = "=" & ws.name & "!R" & row & "C" & startCol & ":R" & row & "C" & endCol
-
-    Dim nm As name
-    Set nm = ws.names(name)
-    If nm Is Nothing Then
-        ws.names.Add name:=name, RefersToR1C1:=ref
-        '   создано: 
-        '   created: 
-        Debug.Print Ru("0020 0020 0441 043E 0437 0434 0430 043D 043E 003A 0020") & name & " -> " & ref
-    Else
-        nm.RefersToR1C1 = ref
-        '   обновлено: 
-        '   updated: 
-        Debug.Print Ru("0020 0020 043E 0431 043D 043E 0432 043B 0435 043D 043E 003A 0020") & name & " -> " & ref
-    End If
-
-    If Err.Number <> 0 Then
-        '   ошибка: 
-        '   error: 
-        Debug.Print Ru("0020 0020 043E 0448 0438 0431 043A 0430 003A 0020") & name & " (" & Err.Description & ")"
-        Err.Clear
-    End If
-    On Error GoTo 0
-End Sub
-
-' ================================================================
-' helper: update/create a range name (10 rows)
-' ================================================================
-Private Sub SetRangeName10RowsR1C1(ByVal ws As Worksheet, ByVal name As String, ByVal startRow As Long, ByVal startCol As Long, ByVal endCol As Long)
-    On Error Resume Next
-
-    Dim endRow As Long
-    endRow = startRow + 9
-    Dim ref As String
-    ref = "=" & ws.name & "!R" & startRow & "C" & startCol & ":R" & endRow & "C" & endCol
 
     Dim nm As name
     Set nm = ws.names(name)

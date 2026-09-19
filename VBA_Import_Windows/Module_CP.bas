@@ -227,7 +227,6 @@ Public Sub RefreshAllTypeCPValidation(ByVal ws As Worksheet)
         End With
         If Err.Number <> 0 Then Err.Clear
         On Error GoTo 0
-        If col Mod 5 = 0 Then DoEvents
     Next col
 
     Application.StatusBar = "typeCP updated"

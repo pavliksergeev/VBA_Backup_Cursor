@@ -2,21 +2,11 @@
 ================================
 
 Excel 16.59 для Mac: File -> Import File не декодирует русский
-в MsgBox и StatusBar. Нужен Unicode-импорт.
+в MsgBox и StatusBar.
 
-1) File -> Import File только Module_ImportUtf8.bas
-   (ASCII, кодировка не важна). Если модуль уже есть — Remove, затем Import.
-2) VBA: Run -> ImportUtf8Modules
-3) Укажите папку VBA_Import_Windows
-   (по умолчанию ~/Downloads/VBA_Backup_Cursor/VBA_Import_Windows).
-4) Макрос заменит код модулей, включая wsAnod, wsPipe, ThisWorkbook.
-
-Нужен доступ к объектной модели VBA
-(файл -> параметры -> центр управления безопасностью -> параметры макросов).
-
-Альтернатива: открыть файл в Cursor из VBA_Import_Windows и вставить
+Откройте файл в Cursor из VBA_Import_Windows и вставьте
 код ниже Attribute / VERSION в модуль (буфер Unicode).
 
 Папка VBA_Import тоже UTF-8 без BOM, тот же текст.
-Не используйте File -> Import File для остальных .bas на Mac —
+Не используйте File -> Import File для .bas на Mac —
 русский в сообщениях снова станет кракозябрами.

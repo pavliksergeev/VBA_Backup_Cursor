@@ -49,16 +49,10 @@ Public Sub SyncAnodColumns(ByVal ws As Worksheet, ByVal colBr As Long)
         Dim step As Long
         step = 0
         
-        Call Module_Constants.ShowProgress(0, totalSteps, "copying Anod columns...")
+        Application.StatusBar = "copying Anod columns..."
         
         For newCol = sourceCol + 1 To endCol
             step = step + 1
-            
-            If step Mod 5 = 0 Or step = totalSteps Then
-                Call Module_Constants.ShowProgress(step, totalSteps, "copying Anod columns...")
-                Application.ScreenUpdating = True
-                DoEvents
-            End If
             
             ws.Columns(sourceCol).Copy Destination:=ws.Columns(newCol)
             ws.Cells(HEADER_ROW, newCol).Value = ChrW(1059) & ChrW(1050) & ChrW(1047) & (newCol - START_COL + 1)
@@ -79,8 +73,6 @@ Public Sub SyncAnodColumns(ByVal ws As Worksheet, ByVal colBr As Long)
             
             sourceCol = newCol
         Next newCol
-        
-        Call Module_Constants.ClearProgress
     End If
     
     If colBr < actualCols Then
@@ -120,14 +112,7 @@ Public Sub SyncAnodColumns(ByVal ws As Worksheet, ByVal colBr As Long)
     
     Application.StatusBar = "updating validation..."
     DoEvents
-    Dim colIdx As Long
-    For colIdx = START_COL To endCol
-        Call Module_ValidationLogic.RefreshValidationForColumn(ws, colIdx)
-        If colIdx Mod 10 = 0 Then
-            Application.ScreenUpdating = True
-            DoEvents
-        End If
-    Next colIdx
+    Call Module_ValidationLogic.RefreshValidationForColumns(ws, START_COL, endCol)
     
     Application.StatusBar = "updating cp_list..."
     DoEvents
@@ -164,7 +149,10 @@ CleanExit:
     DoEvents
 End Sub
 
-' Updates named ranges on Anod sheet
+' обновление именованных диапазонов листа Anod
+' updates named ranges on Anod sheet
+' все нескалярные имена Anod имеют размерность 1 x pipeCountCP
+' all non-scalar Anod names are 1 x pipeCountCP
 Public Sub UpdateNamedRanges(ByVal ws As Worksheet, ByVal colBr As Long)
     On Error GoTo CleanExit
 
@@ -180,102 +168,74 @@ Public Sub UpdateNamedRanges(ByVal ws As Worksheet, ByVal colBr As Long)
     Dim updatedCount As Long
     updatedCount = 0
 
-    Dim nm As name
+    Dim arr As Variant
+    Dim i As Long
+    Dim nm1 As String
+    Dim nmObj As name
     Dim rng As Range
     Dim newRng As Range
-    Dim startRow As Long
-    Dim endRow As Long
-    Dim rowCount As Long
-    Dim nameIndex As Long
 
-    ' ================================================================
-    ' 1. workbook-level names
-    ' ================================================================
-    nameIndex = 0
-    For Each nm In thisWorkbook.names
-        nameIndex = nameIndex + 1
-        If nameIndex Mod 10 = 0 Then
-            Application.StatusBar = "updating global names (" & nameIndex & ")"
-            DoEvents
-        End If
+    arr = Split(ANOD_RANGE_NAMES_1ROW, "|")
+    For i = LBound(arr) To UBound(arr)
+        nm1 = Trim$(arr(i))
+        If Len(nm1) = 0 Then GoTo NextFixedName
 
+        Set rng = Nothing
+        Set nmObj = Nothing
         On Error Resume Next
-        Set rng = ws.Range(nm.name)
-        If Err.Number <> 0 Then
-            Err.Clear
-            GoTo NextGlobalName
-        End If
-        On Error GoTo 0
+        Set nmObj = ws.names(nm1)
+        If nmObj Is Nothing Then Set nmObj = thisWorkbook.names(nm1)
+        If Not nmObj Is Nothing Then Set rng = nmObj.RefersToRange
+        Err.Clear
+        On Error GoTo CleanExit
 
-        If Not rng Is Nothing Then
-            If rng.Parent.name = ws.name Then
-                If Not Module_Constants.IsScalarName(nm.name) Then
-                    startRow = rng.row
-                    rowCount = rng.rows.count           ' ? actual row count
-                    endRow = startRow + rowCount - 1
-                    Set newRng = ws.Range(ws.Cells(startRow, START_COL), ws.Cells(endRow, endCol))
+        If rng Is Nothing Then GoTo NextFixedName
+        If rng.Parent.name <> ws.name Then GoTo NextFixedName
 
-                    If Not newRng Is Nothing Then
-                        On Error Resume Next
-                        nm.RefersTo = newRng
-                        If Err.Number = 0 Then
-                            updatedCount = updatedCount + 1
-                        Else
-                            Err.Clear
-                        End If
-                        On Error GoTo 0
-                    End If
-                End If
-            End If
-        End If
-NextGlobalName:
-    Next nm
-
-    ' ================================================================
-    ' 2. sheet-local names
-    ' ================================================================
-    nameIndex = 0
-    For Each nm In ws.names
-        nameIndex = nameIndex + 1
-        If nameIndex Mod 10 = 0 Then
-            Application.StatusBar = "updating local names (" & nameIndex & ")"
-            DoEvents
-        End If
-
+        Set newRng = ws.Range(ws.Cells(rng.row, START_COL), ws.Cells(rng.row, endCol))
         On Error Resume Next
-        Set rng = ws.Range(nm.name)
-        If Err.Number <> 0 Then
+        nmObj.RefersTo = newRng
+        If Err.Number = 0 Then
+            updatedCount = updatedCount + 1
+        Else
             Err.Clear
-            GoTo NextLocalName
         End If
-        On Error GoTo 0
+        On Error GoTo CleanExit
+NextFixedName:
+    Next i
 
-        If Not rng Is Nothing Then
-            If Not Module_Constants.IsScalarName(nm.name) Then
-                startRow = rng.row
-                rowCount = rng.rows.count               ' ? actual row count
-                endRow = startRow + rowCount - 1
-                Set newRng = ws.Range(ws.Cells(startRow, START_COL), ws.Cells(endRow, endCol))
-
-                If Not newRng Is Nothing Then
-                    On Error Resume Next
-                    nm.RefersTo = newRng
-                    If Err.Number = 0 Then
-                        updatedCount = updatedCount + 1
-                    Else
-                        Err.Clear
-                    End If
-                    On Error GoTo 0
-                End If
-            End If
-        End If
-NextLocalName:
-    Next nm
+    Call PinAnodResultNames1xN(ws, endCol)
 
     Application.StatusBar = "named ranges updated (" & updatedCount & ")"
     DoEvents
 
 CleanExit:
+End Sub
+
+' фиксируем расчётные имена 1 x pipeCountCP на постоянных строках
+' pin calculation-result names to 1 x pipeCountCP on their constant rows
+Private Sub PinAnodResultNames1xN(ByVal ws As Worksheet, ByVal endCol As Long)
+    On Error Resume Next
+    Call SetAnodName1xN(ws, "oneElectrodeResistanceAG", ROW_ONE_ELECTRODE_RESISTANCE_AG, endCol)
+    Call SetAnodName1xN(ws, "oneElectrodeResistanceHorizAG", ROW_ONE_ELECTRODE_RESISTANCE_HORIZ_AG, endCol)
+    Call SetAnodName1xN(ws, "numElectrodesAG", ROW_NUM_ELECTRODES_AG, endCol)
+    Call SetAnodName1xN(ws, "weightWithoutFillingAG", ROW_WEIGHT_WITHOUT_FILLING_AG, endCol)
+    Call SetAnodName1xN(ws, "serviceLifeAG", ROW_SERVICE_LIFE_AG, endCol)
+    Call SetAnodName1xN(ws, "serviceLifeDeviation", ROW_SERVICE_LIFE_DEVIATION, endCol)
+    Call SetAnodName1xN(ws, "correctResistanceAG", ROW_CORRECT_RESISTANCE_AG, endCol)
+    On Error GoTo 0
+End Sub
+
+Private Sub SetAnodName1xN(ByVal ws As Worksheet, ByVal rangeName As String, ByVal rowNum As Long, ByVal endCol As Long)
+    Dim rng As Range
+    Set rng = ws.Range(ws.Cells(rowNum, START_COL), ws.Cells(rowNum, endCol))
+    On Error Resume Next
+    ws.names(rangeName).RefersTo = rng
+    If Err.Number <> 0 Then
+        Err.Clear
+        ws.names.Add name:=rangeName, RefersTo:=rng
+    End If
+    On Error GoTo 0
 End Sub
 
 ' Updates filter named ranges (rows 34-38)
@@ -311,12 +271,6 @@ Public Sub UpdateFilterNamedRanges(ByVal ws As Worksheet, ByVal colBr As Long)
     existsCount = 0
     
     For idx = LBound(filterNames) To UBound(filterNames)
-        If idx Mod 2 = 0 Then
-            Application.StatusBar = "restoring filters: " & filterNames(idx)
-            Application.ScreenUpdating = True
-            DoEvents
-        End If
-        
         rowNum = filterRows(idx)
         
         Set rng = ws.Range(ws.Cells(rowNum, startCol), ws.Cells(rowNum, endCol))

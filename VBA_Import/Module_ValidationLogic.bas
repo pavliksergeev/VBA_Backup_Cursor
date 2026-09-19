@@ -7,24 +7,28 @@ Option Explicit
 ' Validation update, temporary lists with column support
 ' ================================================================
 
-' Updates validation for a single column
-Public Sub RefreshValidationForColumn(ByVal ws As Worksheet, ByVal filterCol As Long)
+' Updates validation for a single column.
+' skipProtect: caller already Unprotect/Protect around a batch of columns.
+Public Sub RefreshValidationForColumn(ByVal ws As Worksheet, ByVal filterCol As Long, Optional ByVal skipProtect As Boolean = False)
     On Error GoTo CleanExit
 
-    Debug.Print "RefreshValidationForColumn: filterCol = " & filterCol
+    If DEBUG_MODE Then Debug.Print "RefreshValidationForColumn: filterCol = " & filterCol
 
     If filterCol < START_COL Or filterCol > MAX_COL Then Exit Sub
 
     Dim wasProtected As Boolean
-    wasProtected = ws.ProtectContents
-    If wasProtected Then
-        On Error Resume Next
-        ws.Unprotect Password:="ptm"
-        If Err.Number <> 0 Then
-            Err.Clear
-            Exit Sub
+    wasProtected = False
+    If Not skipProtect Then
+        wasProtected = ws.ProtectContents
+        If wasProtected Then
+            On Error Resume Next
+            ws.Unprotect Password:="ptm"
+            If Err.Number <> 0 Then
+                Err.Clear
+                Exit Sub
+            End If
+            On Error GoTo 0
         End If
-        On Error GoTo 0
     End If
 
     Dim curMaterial As Variant
@@ -39,7 +43,7 @@ Public Sub RefreshValidationForColumn(ByVal ws As Worksheet, ByVal filterCol As 
     curDelivery = ws.Cells(FILTER_START_ROW + 3, filterCol).Value
     curModel = ws.Cells(FILTER_END_ROW, filterCol).Value
 
-    Debug.Print "RefreshValidationForColumn: curMaterial = " & curMaterial & ", curMountType = " & curMountType & ", curModel = " & curModel
+    If DEBUG_MODE Then Debug.Print "RefreshValidationForColumn: curMaterial = " & curMaterial & ", curMountType = " & curMountType & ", curModel = " & curModel
 
     If Not IsEmpty(curModel) And curModel <> "" Then
         If (IsEmpty(curMaterial) Or curMaterial = "") And _
@@ -49,8 +53,8 @@ Public Sub RefreshValidationForColumn(ByVal ws As Worksheet, ByVal filterCol As 
             
             ' refreshvalidationforcolumn: фильтры пустые, автозаполняем по модели
             ' refreshvalidationforcolumn: filters are empty, autofill from model
-            Debug.Print Ru("0052 0065 0066 0072 0065 0073 0068 0056 0061 006C 0069 0064 0061 0074 0069 006F 006E 0046 006F 0072 0043 006F 006C 0075 006D 006E 003A 0020 0444 0438 043B 044C 0442 0440 044B") & Ru("0020 043F 0443 0441 0442 044B 0435 002C 0020 0430 0432 0442 043E 0437 0430 043F 043E 043B 043D 044F 0435 043C 0020 043F 043E 0020 043C 043E 0434 0435 043B 0438")
-            Call AutoFillFiltersFromModel(ws, filterCol, curModel)
+            If DEBUG_MODE Then Debug.Print Ru("0052 0065 0066 0072 0065 0073 0068 0056 0061 006C 0069 0064 0061 0074 0069 006F 006E 0046 006F 0072 0043 006F 006C 0075 006D 006E 003A 0020 0444 0438 043B 044C 0442 0440 044B") & Ru("0020 043F 0443 0441 0442 044B 0435 002C 0020 0430 0432 0442 043E 0437 0430 043F 043E 043B 043D 044F 0435 043C 0020 043F 043E 0020 043C 043E 0434 0435 043B 0438")
+            Call AutoFillFiltersFromModel(ws, filterCol, curModel, skipProtect)
             
             curMaterial = ws.Cells(FILTER_START_ROW, filterCol).Value
             curMountType = ws.Cells(FILTER_START_ROW + 1, filterCol).Value
@@ -98,35 +102,35 @@ Public Sub RefreshValidationForColumn(ByVal ws As Worksheet, ByVal filterCol As 
     Dim materialList As String
     materialList = Module_ValidationLists.GetMaterialListCross(curMountType, curInstallType, curDelivery, curModel)
     If materialList = "" Then materialList = Module_ValidationLists.GetAllMaterials()
-    Debug.Print "RefreshValidationForColumn: materialList = " & materialList
+    If DEBUG_MODE Then Debug.Print "RefreshValidationForColumn: materialList = " & materialList
     Call UpdateTempList(ws, "TempMaterialList", materialList, filterCol)
     Call SetValidationWithRange(ws.Cells(FILTER_START_ROW, filterCol), "TempMaterialList", filterCol)
 
     Dim mountTypeList As String
     mountTypeList = Module_ValidationLists.GetMountTypeListCross(curMaterial, curInstallType, curDelivery, curModel)
     If mountTypeList = "" Then mountTypeList = Module_ValidationLists.GetAllMountTypes()
-    Debug.Print "RefreshValidationForColumn: mountTypeList = " & mountTypeList
+    If DEBUG_MODE Then Debug.Print "RefreshValidationForColumn: mountTypeList = " & mountTypeList
     Call UpdateTempList(ws, "TempMountList", mountTypeList, filterCol)
     Call SetValidationWithRange(ws.Cells(FILTER_START_ROW + 1, filterCol), "TempMountList", filterCol)
 
     Dim installTypeList As String
     installTypeList = Module_ValidationLists.GetInstallTypeListFromMountType(curMountType)
     If installTypeList = "" Then installTypeList = Module_ValidationLists.GetAllInstallTypes()
-    Debug.Print "RefreshValidationForColumn: installTypeList = " & installTypeList
+    If DEBUG_MODE Then Debug.Print "RefreshValidationForColumn: installTypeList = " & installTypeList
     Call UpdateTempList(ws, "TempInstallList", installTypeList, filterCol)
     Call SetValidationWithRange(ws.Cells(FILTER_START_ROW + 2, filterCol), "TempInstallList", filterCol)
 
     Dim deliveryList As String
     deliveryList = Module_ValidationLists.GetDeliveryListCross(curMaterial, curMountType, curInstallType, curModel)
     If deliveryList = "" Then deliveryList = Module_ValidationLists.GetAllDeliveries()
-    Debug.Print "RefreshValidationForColumn: deliveryList = " & deliveryList
+    If DEBUG_MODE Then Debug.Print "RefreshValidationForColumn: deliveryList = " & deliveryList
     Call UpdateTempList(ws, "TempDeliveryList", deliveryList, filterCol)
     Call SetValidationWithRange(ws.Cells(FILTER_START_ROW + 3, filterCol), "TempDeliveryList", filterCol)
 
     Dim modelList As String
     modelList = Module_ValidationLists.GetModelListCross(curMaterial, curMountType, curInstallType, curDelivery)
     If modelList = "" Then modelList = Module_ValidationLists.GetAllAGModels()
-    Debug.Print "RefreshValidationForColumn: modelList = " & modelList
+    If DEBUG_MODE Then Debug.Print "RefreshValidationForColumn: modelList = " & modelList
     Call UpdateTempList(ws, "TempModelList", modelList, filterCol)
     Call SetValidationWithRange(ws.Cells(FILTER_END_ROW, filterCol), "TempModelList", filterCol)
 
@@ -140,6 +144,36 @@ Public Sub RefreshValidationForColumn(ByVal ws As Worksheet, ByVal filterCol As 
     End If
 
 CleanExit:
+End Sub
+
+' Unprotect once, refresh a column span, Protect once.
+Public Sub RefreshValidationForColumns(ByVal ws As Worksheet, ByVal firstCol As Long, ByVal lastCol As Long)
+    If ws Is Nothing Then Exit Sub
+    If lastCol < firstCol Then Exit Sub
+
+    Dim wasProtected As Boolean
+    wasProtected = ws.ProtectContents
+    If wasProtected Then
+        On Error Resume Next
+        ws.Unprotect Password:="ptm"
+        If Err.Number <> 0 Then
+            Err.Clear
+            Exit Sub
+        End If
+        On Error GoTo 0
+    End If
+
+    Dim colIdx As Long
+    For colIdx = firstCol To lastCol
+        Call RefreshValidationForColumn(ws, colIdx, True)
+    Next colIdx
+
+    If wasProtected Then
+        On Error Resume Next
+        ws.Protect Password:="ptm", UserInterfaceOnly:=True
+        If Err.Number <> 0 Then Err.Clear
+        On Error GoTo 0
+    End If
 End Sub
 
 ' Updates temporary list with column-specific name
@@ -216,7 +250,7 @@ Private Sub SetValidationWithRange(ByVal targetCell As Range, ByVal rangeName As
 
     Dim fullName As String
     fullName = rangeName & "_" & columnIndex
-    Debug.Print "SetValidationWithRange: " & targetCell.address & " -> " & fullName
+    If DEBUG_MODE Then Debug.Print "SetValidationWithRange: " & targetCell.address & " -> " & fullName
 
     Dim nm As name
     On Error Resume Next
@@ -387,17 +421,13 @@ Public Sub ForceRefreshAllValidation(ByVal ws As Worksheet)
     pipeCountValue = SafeRangeValue(ws.Range("pipeCountCP"))
     colBr = SafeNumericValue(pipeCountValue, 1)
     
-    Dim colIdx As Long
-    For colIdx = START_COL To START_COL + colBr - 1
-        Call RefreshValidationForColumn(ws, colIdx)
-        If colIdx Mod 5 = 0 Then DoEvents
-    Next colIdx
+    Call RefreshValidationForColumns(ws, START_COL, START_COL + colBr - 1)
 
 CleanExit:
 End Sub
 
 ' Auto-fills filters from model
-Public Sub AutoFillFiltersFromModel(ByVal ws As Worksheet, ByVal col As Long, ByVal modelValue As String)
+Public Sub AutoFillFiltersFromModel(ByVal ws As Worksheet, ByVal col As Long, ByVal modelValue As String, Optional ByVal skipProtect As Boolean = False)
     On Error GoTo CleanExit
     
     Debug.Print "AutoFillFiltersFromModel: col = " & col & ", modelValue = " & modelValue
@@ -489,7 +519,7 @@ Public Sub AutoFillFiltersFromModel(ByVal ws As Worksheet, ByVal col As Long, By
         ws.Cells(FILTER_END_ROW, col).Value = modelValue
     End If
     
-    Call RefreshValidationForColumn(ws, col)
+    Call RefreshValidationForColumn(ws, col, skipProtect)
     Call Module_AGData.InsertAGDataForColumn(ws, col)
 
 CleanExit:
