@@ -13,6 +13,21 @@ Public Sub SetStatusBar(ByVal msg As String)
     On Error GoTo 0
 End Sub
 
+' StatusBar progress for long loops. Updates on first, last, and every 5th step.
+Public Sub PulseProgress(ByVal phase As String, ByVal current As Long, ByVal total As Long)
+    On Error Resume Next
+    If total <= 0 Then
+        Application.StatusBar = phase
+        DoEvents
+        Exit Sub
+    End If
+    If current = 1 Or current = total Or (current Mod 5) = 0 Then
+        Application.StatusBar = phase & " " & current & " / " & total
+        DoEvents
+    End If
+    On Error GoTo 0
+End Sub
+
 ' ================================================================
 ' global flag to prevent recalculating maxProtectPotential
 ' ================================================================

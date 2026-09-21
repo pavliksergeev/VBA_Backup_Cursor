@@ -38,11 +38,14 @@ VBA_Import — тот же текст, UTF-8 без BOM.
    - Module_PestorePipeNames  (стандартный модуль)
    - Module_NamedRanges  (стандартный модуль)
    - Module_DataCleanup  (стандартный модуль)
+     ListAG кнопка: FullDataCleanupAndRefresh = AuditTableAG
+     ListCP кнопка: AuditTableCP
    - wsAnod  (лист/книга)
    - wsListCP  (лист/книга) [пустой]
    - wsListAG  (лист/книга) [пустой]
    - sheet1  (лист/книга) [пустой]
    - Module_RunAllTests  (стандартный модуль)
+   - Module_RunAllAGTests  (стандартный модуль)
    - Module_ExportAllToTXT  (стандартный модуль)
    - Module_ValidationLists  (стандартный модуль)
    - Module_Visual  (стандартный модуль)

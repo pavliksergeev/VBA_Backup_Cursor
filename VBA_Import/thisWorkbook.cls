@@ -70,7 +70,7 @@ Private Sub Workbook_Open()
     On Error Resume Next
     ws.Cells.Locked = True
     ws.Columns("A:C").Locked = True
-    ws.Range(ws.Cells(1, START_COL), ws.Cells(1, MAX_COL)).EntireColumn.Locked = False
+    ws.Range(ws.Cells(1, START_COL), ws.Cells(1, LAST_ANOD_COL)).EntireColumn.Locked = False
     If Err.Number <> 0 Then
         If DEBUG_MODE Then Debug.Print ">>> column lock error: " & Err.Description
         Err.Clear

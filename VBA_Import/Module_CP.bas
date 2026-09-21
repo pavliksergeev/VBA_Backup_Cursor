@@ -215,6 +215,7 @@ Public Sub RefreshAllTypeCPValidation(ByVal ws As Worksheet)
     validationFormula = "=cp_List"
 
     For col = startCol To endCol
+        Call PulseProgress("updating typeCP", col - startCol + 1, endCol - startCol + 1)
         On Error Resume Next
         With ws.Cells(CP_MODEL_ROW, col).Validation
             .Delete
@@ -231,10 +232,8 @@ Public Sub RefreshAllTypeCPValidation(ByVal ws As Worksheet)
 
     Application.StatusBar = "typeCP updated"
     DoEvents
-    Application.StatusBar = False
 
 CleanExit:
-    Application.StatusBar = False
 End Sub
 
 ' Returns collection of unique CP models

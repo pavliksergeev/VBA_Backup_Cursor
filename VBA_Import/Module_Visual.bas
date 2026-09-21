@@ -39,7 +39,7 @@ Public Sub UpdateVisibilityForAllColumns(ByVal ws As Worksheet)
     startCol = START_COL
     Dim endCol As Long
     endCol = startCol + colBr - 1
-    endCol = Application.WorksheetFunction.Max(startCol, Application.WorksheetFunction.Min(MAX_COL, endCol))
+    endCol = Application.WorksheetFunction.Max(startCol, Application.WorksheetFunction.Min(LAST_ANOD_COL, endCol))
 
     Call ApplyAnodResultRowLabels(ws)
 
@@ -99,7 +99,7 @@ Public Sub UpdateColorsForAllColumns(ByVal ws As Worksheet)
     Dim startCol As Long, endCol As Long
     startCol = START_COL
     endCol = startCol + colBr - 1
-    endCol = Application.WorksheetFunction.Max(startCol, Application.WorksheetFunction.Min(MAX_COL, endCol))
+    endCol = Application.WorksheetFunction.Max(startCol, Application.WorksheetFunction.Min(LAST_ANOD_COL, endCol))
     
     ' сброс заливки расчётных строк
     ' reset interior fill for calculation result rows
@@ -111,6 +111,7 @@ Public Sub UpdateColorsForAllColumns(ByVal ws As Worksheet)
     
     Dim colIdx As Long
     For colIdx = startCol To endCol
+        Call PulseProgress("updating colors", colIdx - startCol + 1, endCol - startCol + 1)
         Call ApplyColorToInstallationType(ws, colIdx)
     Next colIdx
 

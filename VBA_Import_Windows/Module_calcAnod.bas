@@ -123,13 +123,13 @@ Public Sub btnAnodFullCalc()
             Exit Sub
         End If
         pipeCount = CLng(.Value)
-        If pipeCount <= 0 Or pipeCount > 96 Then
+        If pipeCount <= 0 Or pipeCount > MAX_COL Then
             '   !!! pipecountcp вне диапазона: 
             '   !!! pipecountcp out of range: 
             If DEBUG_MODE Then Debug.Print Ru("0020 0020 0021 0021 0021 0020 0050 0069 0070 0065 0043 006F 0075 006E 0074 0043 0050 0020 0432 043D 0435 0020 0434 0438 0430 043F 0430 0437 043E 043D 0430 003A 0020") & pipeCount
-            ' pipecountcp должен быть от 1 до 96.
-            ' pipecountcp must be from 1 to 96.
-            MsgBox Ru("0050 0069 0070 0065 0043 006F 0075 006E 0074 0043 0050 0020 0434 043E 043B 0436 0435 043D 0020 0431 044B 0442 044C 0020 043E 0442 0020 0031 0020 0434 043E 0020 0039 0036 002E")
+            ' pipecountcp должен быть от 1 до 254.
+            ' pipecountcp must be from 1 to 254.
+            MsgBox Ru("0050 0069 0070 0065 0043 006F 0075 006E 0074 0043 0050 0020 0434 043E 043B 0436 0435 043D 0020 0431 044B 0442 044C 0020 043E 0442 0020 0031 0020 0434 043E 0020") & MAX_COL & "."
             Exit Sub
         End If
     End With
@@ -747,10 +747,10 @@ Public Sub WriteFormulasToRow(relativeRow As Long, formulaType As String)
             Exit Sub
         End If
         pipeCount = CLng(.Value)
-        If pipeCount <= 0 Or pipeCount > 96 Then
-            ' pipecountcp должен быть от 1 до 96.
-            ' pipecountcp must be from 1 to 96.
-            MsgBox Ru("0050 0069 0070 0065 0043 006F 0075 006E 0074 0043 0050 0020 0434 043E 043B 0436 0435 043D 0020 0431 044B 0442 044C 0020 043E 0442 0020 0031 0020 0434 043E 0020 0039 0036 002E")
+        If pipeCount <= 0 Or pipeCount > MAX_COL Then
+            ' pipecountcp должен быть от 1 до 254.
+            ' pipecountcp must be from 1 to 254.
+            MsgBox Ru("0050 0069 0070 0065 0043 006F 0075 006E 0074 0043 0050 0020 0434 043E 043B 0436 0435 043D 0020 0431 044B 0442 044C 0020 043E 0442 0020 0031 0020 0434 043E 0020") & MAX_COL & "."
             Exit Sub
         End If
     End With
@@ -1102,10 +1102,10 @@ Public Sub RecalcDerivedForType(relativeRow As Long)
             Exit Sub
         End If
         pipeCount = CLng(.Value)
-        If pipeCount <= 0 Or pipeCount > 96 Then
-            ' pipecountcp должен быть от 1 до 96.
-            ' pipecountcp must be from 1 to 96.
-            MsgBox Ru("0050 0069 0070 0065 0043 006F 0075 006E 0074 0043 0050 0020 0434 043E 043B 0436 0435 043D 0020 0431 044B 0442 044C 0020 043E 0442 0020 0031 0020 0434 043E 0020 0039 0036 002E")
+        If pipeCount <= 0 Or pipeCount > MAX_COL Then
+            ' pipecountcp должен быть от 1 до 254.
+            ' pipecountcp must be from 1 to 254.
+            MsgBox Ru("0050 0069 0070 0065 0043 006F 0075 006E 0074 0043 0050 0020 0434 043E 043B 0436 0435 043D 0020 0431 044B 0442 044C 0020 043E 0442 0020 0031 0020 0434 043E 0020") & MAX_COL & "."
             Exit Sub
         End If
     End With

@@ -14,7 +14,7 @@ Public Sub RefreshValidationForColumn(ByVal ws As Worksheet, ByVal filterCol As 
 
     If DEBUG_MODE Then Debug.Print "RefreshValidationForColumn: filterCol = " & filterCol
 
-    If filterCol < START_COL Or filterCol > MAX_COL Then Exit Sub
+    If filterCol < START_COL Or filterCol > LAST_ANOD_COL Then Exit Sub
 
     Dim wasProtected As Boolean
     wasProtected = False
@@ -164,7 +164,10 @@ Public Sub RefreshValidationForColumns(ByVal ws As Worksheet, ByVal firstCol As 
     End If
 
     Dim colIdx As Long
+    Dim nCols As Long
+    nCols = lastCol - firstCol + 1
     For colIdx = firstCol To lastCol
+        Call PulseProgress("updating validation", colIdx - firstCol + 1, nCols)
         Call RefreshValidationForColumn(ws, colIdx, True)
     Next colIdx
 

@@ -7,13 +7,13 @@ Option Explicit
 ' Column synchronization and named range updates
 ' ================================================================
 
-' Synchronizes columns (copy, delete, hide) based on pipeCountCP
+' Synchronizes columns (copy / clear) based on pipeCountCP, max 254 columns
 Public Sub SyncAnodColumns(ByVal ws As Worksheet, ByVal colBr As Long)
     On Error GoTo CleanExit
     
     Application.ScreenUpdating = True
     DoEvents
-    Application.StatusBar = "syncing columns (" & colBr & ")..."
+    Call SetStatusBar("syncing Anod columns (" & colBr & ")...")
     DoEvents
     
     Application.ScreenUpdating = False
@@ -21,11 +21,12 @@ Public Sub SyncAnodColumns(ByVal ws As Worksheet, ByVal colBr As Long)
     Application.Calculation = xlCalculationManual
     
     colBr = SafeNumericValue(colBr, 1)
+    If colBr > MAX_COL Then colBr = MAX_COL
     
     Dim actualCols As Long
     actualCols = 0
     Dim col As Long
-    For col = START_COL To START_COL + 100
+    For col = START_COL To LAST_ANOD_COL
         If Not IsEmpty(ws.Cells(HEADER_ROW, col).Value) Then
             actualCols = actualCols + 1
         Else
@@ -36,7 +37,7 @@ Public Sub SyncAnodColumns(ByVal ws As Worksheet, ByVal colBr As Long)
     
     Dim endCol As Long
     endCol = START_COL + colBr - 1
-    endCol = Application.WorksheetFunction.Max(START_COL, Application.WorksheetFunction.Min(MAX_COL, endCol))
+    endCol = Application.WorksheetFunction.Max(START_COL, Application.WorksheetFunction.Min(LAST_ANOD_COL, endCol))
     
     If colBr > actualCols Then
         Dim sourceCol As Long
@@ -49,10 +50,12 @@ Public Sub SyncAnodColumns(ByVal ws As Worksheet, ByVal colBr As Long)
         Dim step As Long
         step = 0
         
-        Application.StatusBar = "copying Anod columns..."
+        Call SetStatusBar("copying Anod columns 0 / " & totalSteps)
+        DoEvents
         
         For newCol = sourceCol + 1 To endCol
             step = step + 1
+            Call PulseProgress("copying Anod columns", step, totalSteps)
             
             ws.Columns(sourceCol).Copy Destination:=ws.Columns(newCol)
             ws.Cells(HEADER_ROW, newCol).Value = ChrW(1059) & ChrW(1050) & ChrW(1047) & (newCol - START_COL + 1)
@@ -80,12 +83,16 @@ Public Sub SyncAnodColumns(ByVal ws As Worksheet, ByVal colBr As Long)
         clearStartCol = START_COL + colBr
         Dim lastCol As Long
         lastCol = START_COL + actualCols - 1
+        If lastCol > LAST_ANOD_COL Then lastCol = LAST_ANOD_COL
         If clearStartCol <= lastCol Then
-            ws.Range(ws.Columns(clearStartCol), ws.Columns(lastCol)).Clear
+            Call SetStatusBar("clearing extra Anod columns...")
+            DoEvents
+            ws.Range(ws.Columns(clearStartCol), ws.Columns(lastCol)).ClearContents
+            ws.Range(ws.Columns(clearStartCol), ws.Columns(lastCol)).ClearFormats
         End If
     End If
     
-    Application.StatusBar = "updating column visibility..."
+    Call SetStatusBar("updating column visibility...")
     DoEvents
     
     Dim i As Long
@@ -94,44 +101,42 @@ Public Sub SyncAnodColumns(ByVal ws As Worksheet, ByVal colBr As Long)
         If ws.Columns(i).ColumnWidth = 0 Then ws.Columns(i).ColumnWidth = 8.43
     Next i
     
-    Dim lastUsedCol As Long
-    On Error Resume Next
-    lastUsedCol = ws.Cells.Find(What:="*", After:=ws.Cells(1, 1), LookIn:=xlFormulas, _
-                                SearchOrder:=xlByColumns, SearchDirection:=xlPrevious).Column
-    On Error GoTo 0
-    If lastUsedCol = 0 Then lastUsedCol = MAX_COL
-    If endCol < lastUsedCol Then
-        ws.Range(ws.Columns(endCol + 1), ws.Columns(lastUsedCol)).EntireColumn.Hidden = True
+    If endCol < LAST_ANOD_COL Then
+        ws.Range(ws.Columns(endCol + 1), ws.Columns(LAST_ANOD_COL)).EntireColumn.Hidden = False
     End If
     
-    Application.StatusBar = "updating filters..."
+    Call SetStatusBar("updating filters...")
     DoEvents
     Call UpdateFilterNamedRanges(ws, colBr)
     Application.ScreenUpdating = True
     DoEvents
     
-    Application.StatusBar = "updating validation..."
+    Call SetStatusBar("updating validation...")
     DoEvents
     Call Module_ValidationLogic.RefreshValidationForColumns(ws, START_COL, endCol)
     
-    Application.StatusBar = "updating cp_list..."
+    Call SetStatusBar("updating cp_list...")
     DoEvents
     Call UpdateCPValidationList
     Application.ScreenUpdating = True
     DoEvents
     
-    Application.StatusBar = "updating typeCP..."
+    Call SetStatusBar("updating typeCP...")
     DoEvents
     Call RefreshAllTypeCPValidation(ws)
     Application.ScreenUpdating = True
     DoEvents
     
+    Call SetStatusBar("updating row visibility...")
+    DoEvents
     Call Module_Visual.UpdateVisibilityForAllColumns(ws)
+    Call SetStatusBar("updating colors...")
+    DoEvents
     Call Module_Visual.UpdateColorsForAllColumns(ws)
     Application.ScreenUpdating = True
     DoEvents
     
-    Application.StatusBar = "recalculating..."
+    Call SetStatusBar("recalculating Anod...")
     DoEvents
     ws.Calculate
     Application.ScreenUpdating = True
@@ -163,7 +168,7 @@ Public Sub UpdateNamedRanges(ByVal ws As Worksheet, ByVal colBr As Long)
 
     Dim endCol As Long
     endCol = START_COL + colBr - 1
-    endCol = Application.WorksheetFunction.Max(START_COL, Application.WorksheetFunction.Min(MAX_COL, endCol))
+    endCol = Application.WorksheetFunction.Max(START_COL, Application.WorksheetFunction.Min(LAST_ANOD_COL, endCol))
 
     Dim updatedCount As Long
     updatedCount = 0

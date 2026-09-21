@@ -476,6 +476,8 @@ Public Sub CalcProtectiveZone(ByVal wsAnod As Worksheet)
     ' ================================================================
     wsAnod.Range("lengthProtectiveZone").Value = Lz
     Application.EnableEvents = True
+    Call SetStatusBar("syncing Anod columns (" & pipeCount & ")...")
+    DoEvents
     wsAnod.Range("pipeCountCP").Value = pipeCount   ' D19, if that is the same cell
     DoEvents
 ' do NOT turn events off here, or Worksheet_Change may not run
@@ -483,9 +485,9 @@ Public Sub CalcProtectiveZone(ByVal wsAnod As Worksheet)
     colBr = pipeCount
 
     ' ================================================================
-    ' 8. check: too many columns (> 1000)
+    ' 8. check: too many columns
     ' ================================================================
-    If pipeCount > Module_Constants.MAX_COLUMNS_WARNING Then
+    If pipeCount > Module_Constants.MAX_COL Then
         Dim response As VbMsgBoxResult
         ' внимание! будет создано 
         ' attention! will be created 
@@ -502,7 +504,7 @@ Public Sub CalcProtectiveZone(ByVal wsAnod As Worksheet)
         ' слишком много колонок!
         ' too many columns!
         response = MsgBox(Ru("0432 043D 0438 043C 0430 043D 0438 0435 0021 0020 0431 0443 0434 0435 0442 0020 0441 043E 0437 0434 0430 043D 043E 0020") & pipeCount & Ru("0020 043A 043E 043B 043E 043D 043E 043A 0021") & vbCrLf & _
-                         Ru("044D 0442 043E 0020 0431 043E 043B 0435 0435 0020") & Module_Constants.MAX_COLUMNS_WARNING & Ru("0020 043A 043E 043B 043E 043D 043E 043A 002E") & vbCrLf & vbCrLf & _
+                         Ru("044D 0442 043E 0020 0431 043E 043B 0435 0435 0020") & Module_Constants.MAX_COL & Ru("0020 043A 043E 043B 043E 043D 043E 043A 002E") & vbCrLf & vbCrLf & _
                          Ru("043E 043F 0435 0440 0430 0446 0438 044F 0020 043C 043E 0436 0435 0442 0020 0437 0430 043D 044F 0442 044C 0020 043E 0447 0435 043D 044C 0020 043C 043D 043E 0433 043E 0020 0432") & Ru("0440 0435 043C 0435 043D 0438 002E") & vbCrLf & _
                          Ru("043F 0440 043E 0434 043E 043B 0436 0438 0442 044C 003F"), _
                          vbYesNo + vbCritical + vbDefaultButton2, Ru("0441 043B 0438 0448 043A 043E 043C 0020 043C 043D 043E 0433 043E 0020 043A 043E 043B 043E 043D 043E 043A 0021"))

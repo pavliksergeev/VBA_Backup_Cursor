@@ -67,8 +67,9 @@ Private Sub Worksheet_Change(ByVal Target As Range)
             ' Round to integer if the value is fractional
             Dim newPipeCountInt As Long
             newPipeCountInt = CLng(Application.WorksheetFunction.Round(newPipeCount, 0))
+            If newPipeCountInt > MAX_COL Then newPipeCountInt = MAX_COL
             
-            ' If rounding changed the value, write it back
+            ' If rounding or the 254-column cap changed the value, write it back
             If newPipeCountInt <> CDbl(newPipeCount) Then
                 Application.EnableEvents = False
                 Me.Range("pipeCountCP").Value = newPipeCountInt
@@ -139,7 +140,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     startCol = START_COL
     Dim endCol As Long
     endCol = startCol + colBr - 1
-    endCol = Application.WorksheetFunction.Max(startCol, Application.WorksheetFunction.Min(MAX_COL, endCol))
+    endCol = Application.WorksheetFunction.Max(startCol, Application.WorksheetFunction.Min(LAST_ANOD_COL, endCol))
     
     Dim filterRange As Range
     Set filterRange = Me.Range(Me.Cells(FILTER_START_ROW, startCol), Me.Cells(FILTER_END_ROW, endCol))
@@ -285,6 +286,9 @@ Private Sub HandlePipeCountChange(ByVal newCount As Long)
     Application.EnableEvents = False
     Application.ScreenUpdating = False
     Application.Calculation = xlCalculationManual
+    
+    Call SetStatusBar("syncing Anod columns (" & newCount & ")...")
+    DoEvents
     
     Call Module_Sync.SyncAnodColumns(ws, newCount)
     Call Module_Sync.UpdateNamedRanges(ws, newCount)

@@ -13,6 +13,7 @@ Public Const SHEET_PASSWORD As String = "ptm"
 ' ================================================================
 Public Const START_COL As Long = 4
 Public Const MAX_COL As Long = 254
+Public Const LAST_ANOD_COL As Long = START_COL + MAX_COL - 1
 Public Const MIN_COL As Long = 1
 
 ' ================================================================
@@ -70,6 +71,7 @@ Public Const SHEET_STO_REF As String = "STO"
 Public Const TABLE_AG As String = "TableAG"
 Public Const TABLE_CP As String = "TableCP"
 Public Const TABLE_ALL_TEST As String = "TableAllTest"
+Public Const TABLE_MOUNTING As String = "TableMounting"
 
 ' ================================================================
 ' 7. scalar names (not variables) - notes:
@@ -131,7 +133,7 @@ Public Const MAX_Lz As Double = 100000   ' maximum protective-zone length (m)
 ' ================================================================
 ' 10. column-count warning
 ' ================================================================
-Public Const MAX_COLUMNS_WARNING As Long = 250
+Public Const MAX_COLUMNS_WARNING As Long = MAX_COL
 
 ' ================================================================
 ' 11. progress-bar constants
