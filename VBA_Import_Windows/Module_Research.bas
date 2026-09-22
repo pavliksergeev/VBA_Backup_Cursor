@@ -142,42 +142,9 @@ Sub button126_click()
 End Sub
 
 ' ================================================================
-' calculate mean soil resistivity
+' calculate mean soil resistivity from survey rows (popup form)
+' writes to soilResistivityAvg of the active Pipe section
 ' ================================================================
 Sub button112_click()
-    ' в разработке
-    ' under development
-    MsgBox Ru("0432 0020 0440 0430 0437 0440 0430 0431 043E 0442 043A 0435")
-'On Error GoTo CleanExit
-'
-'    Dim colBr As Long
-'    Dim pipeCountValue As Variant
-'
-'    On Error Resume Next
-'    pipeCountValue = Range("pipeDifferentParametersNum").Value
-'    If Err.Number <> 0 Then pipeCountValue = 1
-'    On Error GoTo 0
-'
-'    If IsNumeric(pipeCountValue) And pipeCountValue > 0 Then
-'        colBr = CLng(pipeCountValue)
-'    Else
-'        colBr = 1
-'    End If
-'    If colBr < 1 Then colBr = 1
-'    If colBr > 16384 Then colBr = 16384
-'
-'    Dim i As Long
-'    For i = 1 To colBr
-'        On Error Resume Next
-'        Dim srcVal As Variant
-'        srcVal = Range("soilAvgResistivityAlongPipe" & i).Value
-'        If Err.Number = 0 Then
-'            If Not IsEmpty(srcVal) And IsNumeric(srcVal) Then
-'                Range("soilResistivityAvg").Cells(1, i).Value = srcVal
-'            End If
-'        End If
-'        On Error GoTo 0
-'    Next i
-'
-'CleanExit:
+    Call ShowSoilAvgForm(SOILAVG_TARGET_PIPE)
 End Sub

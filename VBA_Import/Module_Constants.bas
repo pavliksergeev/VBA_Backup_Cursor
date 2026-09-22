@@ -64,6 +64,7 @@ Public Const SHEET_STO As String = "STO"
 Public Const SHEET_SETTINGS As String = "_Settings"
 Public Const SHEET_GUIDE As String = "Guide"
 Public Const SHEET_STO_REF As String = "STO"
+Public Const SHEET_SOIL_AVG As String = "_SoilAvg"
 
 ' ================================================================
 ' 6. table names
@@ -72,6 +73,7 @@ Public Const TABLE_AG As String = "TableAG"
 Public Const TABLE_CP As String = "TableCP"
 Public Const TABLE_ALL_TEST As String = "TableAllTest"
 Public Const TABLE_MOUNTING As String = "TableMounting"
+Public Const TABLE_SOIL_AVG As String = "TableSoilAvg"
 
 ' ================================================================
 ' 7. scalar names (not variables) - notes:
