@@ -1,4 +1,4 @@
-﻿VERSION 1.0 CLASS
+VERSION 1.0 CLASS
 BEGIN
   MultiUse = -1  'True
 END
@@ -115,6 +115,7 @@ Private Sub Workbook_Open()
     colBrInit = SafeNumericValue(pipeCountInit, 1)
 
     Call Module_ValidationLogic.RefreshValidationForColumns(ws, START_COL, START_COL + colBrInit - 1)
+    Call PlaceAnodLayerButtons(ws, colBrInit)
 
     If Err.Number <> 0 Then
         If DEBUG_MODE Then Debug.Print ">>> validation initialization error: " & Err.Description

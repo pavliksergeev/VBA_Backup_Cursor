@@ -407,7 +407,7 @@ Public Sub RunAllTests()
     Call FillPipeNamedRange("pipeWallThickness", 0.017)
     Call FillPipeNamedRange("pipeInsulationResistivityStartLife", 50000)
     Call FillPipeNamedRange("pipeLayingDepth", 1.6)
-    Call FillPipeNamedRange("soilResistivityAvg", 50)
+    Call FillPipeNamedRange("soilResistivityAvg", 19)
     Call FillPipeNamedRange("serviceLifeDesigned", 30)
     Call FillPipeNamedRange("pipeResistivityChangeFactor", 0.11)
 
@@ -433,6 +433,10 @@ Public Sub RunAllTests()
     Application.Calculation = xlCalculationManual
     Application.DisplayAlerts = False
     Call LogTrace("PIPE: columns synced, validation lists created")
+
+    ' плечо 2: Rиз0 с экрана исходных данных Pipe (после sync, иначе копируется плечо 1)
+    ' section 2: Pipe Rins0 from input screenshot (after sync, otherwise section 1 is copied)
+    wsPipe.Cells(wsPipe.Range("pipeInsulationResistivityStartLife").row, START_COL + 1).Value = 67300
 
     ' --- pipe calculation ---
     Application.StatusBar = "pipe calculation..."
@@ -468,7 +472,7 @@ Public Sub RunAllTests()
     Call LogTrace("PIPE: R_in = " & R_in & ", R_in_end = " & R_in_end)
 
     Dim expR_in_end As Double
-    expR_in_end = 0.0242
+    expR_in_end = 0.024
     Dim devR As Double
     If expR_in_end <> 0 Then
         devR = Abs((R_in_end - expR_in_end) / expR_in_end) * 100
@@ -500,7 +504,7 @@ Public Sub RunAllTests()
     wsAnod.Range("maxProtectPotential").Value = -1.15
     wsAnod.Range("naturalPotential").Value = -0.55
     wsAnod.Range("factorMutualInfluence").Value = 0.5
-    wsAnod.Range("pipeLength").Value = 350000
+    wsAnod.Range("pipeLength").Value = 300000
 
     ' --- protective zone calculation ---
     Application.StatusBar = "protective zone calculation..."
@@ -670,6 +674,13 @@ Public Sub RunAllTests()
             GoTo CleanExit
         End If
     Next scIdx
+
+    Call LogTrace("ANOD: PlaceAnodLayerButtons after typeMountingAG fill")
+    On Error Resume Next
+    Call PlaceAnodLayerButtons(wsAnod, nScenarios)
+    If Err.Number <> 0 Then Call LogTrace("ANOD: PlaceAnodLayerButtons err " & Err.Number & " " & Err.Description)
+    Err.Clear
+    On Error GoTo CleanExit
 
     If Timer - startTime > TIMEOUT_SECONDS Then
         Call LogTrace("SCENARIO: timeout exceeded before anode calc")

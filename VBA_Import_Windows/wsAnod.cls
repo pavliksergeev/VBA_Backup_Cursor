@@ -292,6 +292,7 @@ Private Sub HandlePipeCountChange(ByVal newCount As Long)
     
     Call Module_Sync.SyncAnodColumns(ws, newCount)
     Call Module_Sync.UpdateNamedRanges(ws, newCount)
+    Call PlaceAnodLayerButtons(ws, newCount)
     
     ws.Calculate
     
@@ -385,6 +386,7 @@ Private Sub ProcessFilterChange(ByVal ws As Worksheet, ByVal col As Long, ByVal 
     
     Call Module_Visual.UpdateVisibilityForAllColumns(ws)
     Call Module_Visual.UpdateColorsForAllColumns(ws)
+    Call PlaceAnodLayerButtons(ws, SafeNumericValue(SafeRangeValue(ws.Range("pipeCountCP")), 1))
     
     Application.EnableEvents = oldEvents
     Application.ScreenUpdating = oldScreen

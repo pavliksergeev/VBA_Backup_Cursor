@@ -299,7 +299,7 @@ Public Sub btnPipeCalculate()
 
     ' calculation variables
     Dim rho_steel As Double, D As Double, thick As Double
-    Dim rho_avg As Double, rho_around As Double, h As Double
+    Dim rho_avg As Double, h As Double
     Dim R_ins_start As Double, changeFactor As Double, serviceLife As Double
     Dim Rt As Double, Rp As Double, Rper As Double
     Dim Rp_length As Double, Rins0_length As Double
@@ -318,8 +318,6 @@ Public Sub btnPipeCalculate()
         D = CDbl(arrDiameter(1, i))
         thick = CDbl(arrWallThick(1, i))
         rho_avg = CDbl(arrSoilResistAvg(1, i))
-        ' ? rho_around is calculated; use default 500
-        rho_around = 500 'CDbl(soilResistanceAroundPipe(1, i))
         h = CDbl(arrLayingDepth(1, i))
         R_ins_start = CDbl(arrInsulResistStart(1, i))
         changeFactor = CDbl(arrChangeFactor(1, i))
@@ -333,7 +331,7 @@ Public Sub btnPipeCalculate()
         ' ================================================================
         ' validate inputs (guard against division by zero)
         ' ================================================================
-        If D <= 0 Or thick <= 0 Or h <= 0 Or rho_steel <= 0 Or rho_avg <= 0 Or rho_around <= 0 Then
+        If D <= 0 Or thick <= 0 Or h <= 0 Or rho_steel <= 0 Or rho_avg <= 0 Then
             ' плечо 
             ' section 
             ' : некорректные входные данные
@@ -401,7 +399,8 @@ arrRper(i) = Rper
         ' specific resistances
         ' ================================================================
         If D > 0 Then
-            Rp_length = rho_around / (pi * D)
+            ' R'p = soilResistanceAroundPipe / (pi * D)
+            Rp_length = Rp / (pi * D)
         Else
             Rp_length = 0
         End If

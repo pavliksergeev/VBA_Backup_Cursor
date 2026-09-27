@@ -22,8 +22,10 @@ Private cacheModelClean() As String
 Private mountN As Long
 Private mountRaw() As Variant
 Private installRaw() As Variant
+Private shipRaw() As Variant
 Private mountClean() As String
 Private installClean() As String
+Private shipClean() As String
 Private mountPairs As Collection
 
 Private strAllMaterials As String
@@ -74,19 +76,23 @@ Public Function GetAllAGModels() As String
     GetAllAGModels = strAllModels
 End Function
 
-' Returns list of installation types that depend only on mounting type
-Public Function GetInstallTypeListFromMountType(ByVal mountType As String) As String
+' Returns list of installation types for TableAG mount type AND комплектация.
+' комплектный -> TableMounting rows marked комплектный (with activator).
+' некомплектный -> rows marked некомплектный or with empty комплектация (no activator).
+Public Function GetInstallTypeListFromMountType(ByVal mountType As String, Optional ByVal delivery As Variant) As String
     On Error GoTo CleanExit
     If Not EnsureAGListCache() Then Exit Function
 
     Dim col As New Collection
     Dim i As Long
     Dim cleanMount As String
+    Dim cleanShip As String
     cleanMount = CleanStringForTable(CStr(mountType))
+    cleanShip = OptionalClean(delivery)
 
     For i = 1 To mountN
-        If Not IsError(mountRaw(i)) And Not IsError(installRaw(i)) And Not IsEmpty(installRaw(i)) Then
-            If cleanMount = "" Or InStr(1, mountClean(i), cleanMount, vbTextCompare) > 0 Then
+        If Not IsError(installRaw(i)) And Not IsEmpty(installRaw(i)) Then
+            If MountShipMatch(i, cleanMount, cleanShip) Then
                 If installClean(i) <> "" Then AddUniqueToCollection col, installClean(i)
             End If
         End If
@@ -98,8 +104,9 @@ CleanExit:
     GetInstallTypeListFromMountType = ""
 End Function
 
-' Checks if combination of mounting type and installation type exists
-Public Function CheckInstallationExists(ByVal mountType As String, ByVal installType As String) As Boolean
+' Checks if TableMounting has this mount + install, optionally for комплектация.
+' комплектный only matches комплектный rows; некомплектный matches empty/некомплектный.
+Public Function CheckInstallationExists(ByVal mountType As String, ByVal installType As String, Optional ByVal delivery As Variant) As Boolean
     On Error GoTo CleanExit
 
     If mountType = "" Or installType = "" Then
@@ -111,32 +118,37 @@ Public Function CheckInstallationExists(ByVal mountType As String, ByVal install
         CheckInstallationExists = False
         Exit Function
     End If
-    If mountPairs Is Nothing Then
+
+    Dim cleanMount As String
+    Dim cleanInstall As String
+    Dim cleanShip As String
+    Dim i As Long
+    cleanMount = CleanStringForTable(CStr(mountType))
+    cleanInstall = CleanStringForTable(CStr(installType))
+    cleanShip = OptionalClean(delivery)
+    If cleanMount = "" Or cleanInstall = "" Then
         CheckInstallationExists = False
         Exit Function
     End If
 
-    Dim key As String
-    key = PairKey(NormalizeFilterText(mountType), NormalizeFilterText(installType))
-    If key = "" Then
-        CheckInstallationExists = False
-        Exit Function
-    End If
+    For i = 1 To mountN
+        If installClean(i) = cleanInstall Then
+            If MountShipMatch(i, cleanMount, cleanShip) Then
+                CheckInstallationExists = True
+                Exit Function
+            End If
+        End If
+    Next i
 
-    On Error Resume Next
-    Dim dummy As Variant
-    dummy = mountPairs.item(key)
-    CheckInstallationExists = (Err.Number = 0)
-    Err.Clear
-    On Error GoTo 0
+    CheckInstallationExists = False
     Exit Function
 
 CleanExit:
     CheckInstallationExists = False
 End Function
 
-' Returns installation type for given mounting type
-Public Function GetInstallationTypeFromMountType(ByVal mountType As String) As String
+' Returns first installation type for mounting type and optional комплектация
+Public Function GetInstallationTypeFromMountType(ByVal mountType As String, Optional ByVal delivery As Variant) As String
     On Error GoTo CleanExit
 
     If mountType = "" Or IsEmpty(mountType) Then
@@ -146,11 +158,13 @@ Public Function GetInstallationTypeFromMountType(ByVal mountType As String) As S
     If Not EnsureAGListCache() Then Exit Function
 
     Dim cleanMountType As String
+    Dim cleanShip As String
     Dim i As Long
     cleanMountType = CleanStringForTable(mountType)
+    cleanShip = OptionalClean(delivery)
 
     For i = 1 To mountN
-        If mountClean(i) = cleanMountType Then
+        If MountShipMatch(i, cleanMountType, cleanShip) Then
             If Not IsError(installRaw(i)) And Not IsEmpty(installRaw(i)) And CStr(installRaw(i)) <> "" Then
                 GetInstallationTypeFromMountType = CStr(installRaw(i))
                 Exit Function
@@ -186,7 +200,7 @@ Public Function GetMaterialListCross(ByVal mountType As Variant, ByVal installTy
             matchShip = (cleanShip = "" Or cacheShipClean(i) = cleanShip)
             matchModel = (cleanModel = "" Or cacheModelClean(i) = cleanModel)
             matchInstall = True
-            If cleanInstall <> "" Then matchInstall = CheckInstallationExists(cacheMountClean(i), cleanInstall)
+            If cleanInstall <> "" Then matchInstall = CheckInstallationExists(cacheMountClean(i), cleanInstall, cacheShipClean(i))
             If matchMount And matchShip And matchModel And matchInstall Then
                 AddUniqueToCollection col, cacheMatRaw(i)
             End If
@@ -221,7 +235,7 @@ Public Function GetMountTypeListCross(ByVal material As Variant, ByVal installTy
             matchShip = (cleanShip = "" Or cacheShipClean(i) = cleanShip)
             matchModel = (cleanModel = "" Or cacheModelClean(i) = cleanModel)
             matchInstall = True
-            If cleanInstall <> "" Then matchInstall = CheckInstallationExists(cacheMountClean(i), cleanInstall)
+            If cleanInstall <> "" Then matchInstall = CheckInstallationExists(cacheMountClean(i), cleanInstall, cacheShipClean(i))
             If matchMat And matchShip And matchModel And matchInstall Then
                 AddUniqueToCollection col, cacheMountRaw(i)
             End If
@@ -256,7 +270,7 @@ Public Function GetDeliveryListCross(ByVal material As Variant, ByVal mountType 
             matchMount = (cleanMount = "" Or cacheMountClean(i) = cleanMount)
             matchModel = (cleanModel = "" Or cacheModelClean(i) = cleanModel)
             matchInstall = True
-            If cleanInstall <> "" Then matchInstall = CheckInstallationExists(cacheMountClean(i), cleanInstall)
+            If cleanInstall <> "" Then matchInstall = CheckInstallationExists(cacheMountClean(i), cleanInstall, cacheShipClean(i))
             If matchMat And matchMount And matchModel And matchInstall Then
                 AddUniqueToCollection col, cacheShipRaw(i)
             End If
@@ -291,7 +305,7 @@ Public Function GetModelListCross(ByVal material As Variant, ByVal mountType As 
             matchMount = (cleanMount = "" Or cacheMountClean(i) = cleanMount)
             matchShip = (cleanShip = "" Or cacheShipClean(i) = cleanShip)
             matchInstall = True
-            If cleanInstall <> "" Then matchInstall = CheckInstallationExists(cacheMountClean(i), cleanInstall)
+            If cleanInstall <> "" Then matchInstall = CheckInstallationExists(cacheMountClean(i), cleanInstall, cacheShipClean(i))
             If matchMat And matchMount And matchShip And matchInstall Then
                 AddUniqueToCollection col, cacheModelRaw(i)
             End If
@@ -406,25 +420,44 @@ Private Sub LoadMountingCache(ByVal tblMounting As ListObject)
     If tblMounting Is Nothing Then Exit Sub
     If tblMounting.DataBodyRange Is Nothing Then Exit Sub
 
-    Dim mVals As Variant, iVals As Variant
+    Dim mVals As Variant, iVals As Variant, sVals As Variant
     Dim colInst As Collection
     Dim key As String
     Dim i As Long
+    Dim colMountIdx As Long, colInstIdx As Long, colShipIdx As Long
 
-    mVals = As2D(tblMounting.ListColumns(4).DataBodyRange.Value)
-    iVals = As2D(tblMounting.ListColumns(3).DataBodyRange.Value)
+    colInstIdx = MountColIndex(tblMounting, Ru("0441 043F 043E 0441 043E 0431 0020 043C 043E 043D 0442 0430 0436 0430"), 3)
+    colMountIdx = MountColIndex(tblMounting, Ru("0442 0438 043F 0020 043C 043E 043D 0442 0430 0436 0430"), 4)
+    colShipIdx = MountColIndex(tblMounting, Ru("043A 043E 043C 043F 043B 0435 043A 0442 0430 0446 0438 044F"), 5)
+    If colMountIdx = 0 Or colInstIdx = 0 Then Exit Sub
+
+    mVals = As2D(tblMounting.ListColumns(colMountIdx).DataBodyRange.Value)
+    iVals = As2D(tblMounting.ListColumns(colInstIdx).DataBodyRange.Value)
+    If colShipIdx > 0 Then
+        sVals = As2D(tblMounting.ListColumns(colShipIdx).DataBodyRange.Value)
+    Else
+        sVals = Empty
+    End If
     mountN = UBound(mVals, 1)
     ReDim mountRaw(1 To mountN)
     ReDim installRaw(1 To mountN)
+    ReDim shipRaw(1 To mountN)
     ReDim mountClean(1 To mountN)
     ReDim installClean(1 To mountN)
+    ReDim shipClean(1 To mountN)
 
     Set colInst = New Collection
     For i = 1 To mountN
         mountRaw(i) = mVals(i, 1)
         installRaw(i) = iVals(i, 1)
+        If IsArray(sVals) Then
+            shipRaw(i) = sVals(i, 1)
+        Else
+            shipRaw(i) = ""
+        End If
         mountClean(i) = CleanCell(mountRaw(i))
         installClean(i) = CleanCell(installRaw(i))
+        shipClean(i) = CleanCell(shipRaw(i))
         AddUniqueToCollection colInst, installRaw(i)
         If Not IsError(mountRaw(i)) And Not IsError(installRaw(i)) Then
             key = PairKey(NormalizeFilterText(CStr(mountRaw(i))), NormalizeFilterText(CStr(installRaw(i))))
@@ -471,6 +504,62 @@ Private Function CleanCell(ByVal v As Variant) As String
     Else
         CleanCell = CleanStringForTable(CStr(v))
     End If
+End Function
+
+Private Function OptionalClean(ByVal delivery As Variant) As String
+    If IsMissing(delivery) Then
+        OptionalClean = ""
+    ElseIf IsError(delivery) Or IsEmpty(delivery) Then
+        OptionalClean = ""
+    Else
+        OptionalClean = CleanStringForTable(CStr(delivery))
+    End If
+End Function
+
+' TableAG тип монтажа = TableMounting тип монтажа.
+' комплектный: only TableMounting комплектация = комплектный (always with activator).
+' некомплектный: TableMounting комплектация empty or некомплектный (always without activator).
+Private Function MountShipMatch(ByVal i As Long, ByVal cleanMount As String, ByVal cleanShip As String) As Boolean
+    If cleanMount <> "" And mountClean(i) <> cleanMount Then Exit Function
+    If cleanShip <> "" Then
+        If KitIsComplete(cleanShip) Then
+            If Not KitIsComplete(shipClean(i)) Then Exit Function
+        ElseIf KitIsIncomplete(cleanShip) Then
+            If KitIsComplete(shipClean(i)) Then Exit Function
+        Else
+            If shipClean(i) <> "" And shipClean(i) <> cleanShip Then Exit Function
+        End If
+    End If
+    MountShipMatch = True
+End Function
+
+Private Function KitIsIncomplete(ByVal cleanShip As String) As Boolean
+    Dim needle As String
+    If Len(cleanShip) = 0 Then Exit Function
+    needle = CleanStringForTable(Ru("043D 0435 043A 043E 043C 043F 043B 0435 043A 0442 043D 044B 0439"))
+    KitIsIncomplete = (InStr(1, cleanShip, needle, vbTextCompare) > 0)
+End Function
+
+Private Function KitIsComplete(ByVal cleanShip As String) As Boolean
+    Dim needle As String
+    If Len(cleanShip) = 0 Then Exit Function
+    If KitIsIncomplete(cleanShip) Then Exit Function
+    needle = CleanStringForTable(Ru("043A 043E 043C 043F 043B 0435 043A 0442 043D 044B 0439"))
+    KitIsComplete = (InStr(1, cleanShip, needle, vbTextCompare) > 0)
+End Function
+
+Private Function MountColIndex(ByVal tbl As ListObject, ByVal headerRu As String, ByVal fallback As Long) As Long
+    Dim c As Long
+    Dim hdr As String
+    If tbl Is Nothing Then Exit Function
+    hdr = CleanStringForTable(headerRu)
+    For c = 1 To tbl.ListColumns.Count
+        If StrComp(CleanCell(tbl.ListColumns(c).Name), hdr, vbTextCompare) = 0 Then
+            MountColIndex = c
+            Exit Function
+        End If
+    Next c
+    If fallback >= 1 And fallback <= tbl.ListColumns.Count Then MountColIndex = fallback
 End Function
 
 Private Function PairKey(ByVal mountNorm As String, ByVal installNorm As String) As String

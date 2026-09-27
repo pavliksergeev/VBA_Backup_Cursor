@@ -254,7 +254,9 @@ End Function
 ' ================================================================
 ' update wall thickness validation (preserve current value)
 ' ================================================================
-Private Sub UpdateWallThicknessValidation(ByVal diamCell As Range, Optional ByVal keepValue As Boolean = False)
+Private Sub UpdateWallThicknessValidation(ByVal diamCell As Range, _
+                                         Optional ByVal keepValue As Boolean = False, _
+                                         Optional ByVal skipProtect As Boolean = False)
     On Error GoTo CleanExit
     
     If IsEmpty(diamCell.Value) Then
@@ -282,7 +284,14 @@ Private Sub UpdateWallThicknessValidation(ByVal diamCell As Range, Optional ByVa
     thicknessList = GetThicknessHeadersForDiameter(diameter)
     
     Dim thicknessCell As Range
-    Set thicknessCell = wsPipe.Cells(8, col)
+    Dim wallRow As Long
+    wallRow = 8
+    On Error Resume Next
+    wallRow = wsPipe.Range("pipeWallThickness").row
+    If Err.Number <> 0 Or wallRow < 1 Then wallRow = 8
+    Err.Clear
+    On Error GoTo CleanExit
+    Set thicknessCell = wsPipe.Cells(wallRow, col)
     
     Dim currentValue As Variant
     If keepValue Then
@@ -323,28 +332,13 @@ Private Sub UpdateWallThicknessValidation(ByVal diamCell As Range, Optional ByVa
             End With
             
             If keepValue And Not IsEmpty(currentValue) Then
-                Dim valueExists As Boolean
-                valueExists = False
-                Dim item As Variant
-                For Each item In thicknessList
-                    If CStr(item) = CStr(currentValue) Then
-                        valueExists = True
-                        Exit For
-                    End If
-                Next item
-                
-                If valueExists Then
-                    thicknessCell.Value = currentValue
-                Else
-                    thicknessCell.Value = ""
-                End If
-            Else
-                thicknessCell.Value = ""
+                thicknessCell.Value = currentValue
             End If
             
-            ' restore sheet protection
-            wsPipe.Protect Password:="ptm", AllowInsertingRows:=False, AllowDeletingRows:=False, _
-                            AllowSorting:=False, AllowFiltering:=False, UserInterfaceOnly:=True
+            If Not skipProtect Then
+                wsPipe.Protect Password:="ptm", AllowInsertingRows:=False, AllowDeletingRows:=False, _
+                                AllowSorting:=False, AllowFiltering:=False, UserInterfaceOnly:=True
+            End If
         End If
     End If
 
@@ -603,7 +597,7 @@ Public Sub CreatePipeValidation()
     On Error Resume Next
     changeFactorRow = wsPipe.Range("pipeResistivityChangeFactor").row
     On Error GoTo CleanExit
-    If changeFactorRow < 1 Then changeFactorRow = 12
+    If changeFactorRow < 1 Then changeFactorRow = 14
     
     For col = startCol To endCol
         On Error Resume Next
@@ -655,6 +649,11 @@ Public Sub CreatePipeValidation()
     Else
         Debug.Print "GetInsulationResistivityList returned empty list - pipeInsulationResistivityStartLife validation not created"
     End If
+    
+    ' --- 5. wall thickness list (keep current value) ---
+    For col = startCol To endCol
+        Call UpdateWallThicknessValidation(wsPipe.Cells(7, col), True, True)
+    Next col
     
     ' restore sheet protection
     If wasProtected Then
@@ -833,8 +832,8 @@ Public Sub SyncPipeRangesAndColumns(ByVal colBr As Long)
     Dim rangeNames As Variant
     rangeNames = Array( _
         "pipeSteelGrade", "pipeSteelResistivity", "pipeDiameter", _
-        "pipeWallThickness", "pipeInsulationResistivityStartLife", "pipeLayingDepth", _
-        "soilResistivityAvg", "serviceLifeDesigned", "pipeResistivityChangeFactor", _
+        "pipeWallThickness", "pipeLengthSegment", "soilResistivityAvg", "pipeInsulationResistivityStartLife", _
+        "pipeLayingDepth", "serviceLifeDesigned", "pipeResistivityChangeFactor", _
         "pipeAlongResistance", "soilResistanceAroundPipe", "pipeTransientResistivity", _
         "soilResistivityAroundPipe", "pipeSteelResistivity", "pipeInsulationResistanceStartLife", _
         "pipeTransientResistance", "pipeTransientResistanceEndLife", "factorPropagationCurrentAlongPipe", _
@@ -902,44 +901,32 @@ Public Sub SyncPipeRangesAndColumns(ByVal colBr As Long)
         progressStep = 0
         
         For newCol = sourceCol + 1 To startCol + colBr - 1
-            ' 1. copy the whole column (data + formats)
-            wsPipe.Columns(sourceCol).Copy Destination:=wsPipe.Columns(newCol)
+            wsPipe.Columns(newCol).ColumnWidth = wsPipe.Columns(sourceCol).ColumnWidth
+            wsPipe.Range(wsPipe.Cells(1, sourceCol), wsPipe.Cells(30, sourceCol)).Copy _
+                Destination:=wsPipe.Cells(1, newCol)
             
-            ' 2. update the header
             ' плечо 
             ' section 
             wsPipe.Cells(4, newCol).Value = Ru("043F 043B 0435 0447 043E 0020") & (newCol - startCol + 1)
             
-            ' ================================================================
-            ' 3. clear scalar cells (fully)
-            ' ================================================================
-            
-            ' --- pipedifferentparametersnum (row 3) ---
             With wsPipe.Cells(3, newCol)
                 .ClearContents
                 .ClearFormats
                 .Validation.Delete
             End With
-            
-            ' --- pipeinputresistance (row 28) ---
-            With wsPipe.Cells(28, newCol)
-                .ClearContents
-                .ClearFormats
-                .Validation.Delete
-            End With
-            
-            ' --- pipeinputresistanceendlife (row 29) ---
             With wsPipe.Cells(29, newCol)
                 .ClearContents
                 .ClearFormats
                 .Validation.Delete
             End With
+            With wsPipe.Cells(30, newCol)
+                .ClearContents
+                .ClearFormats
+                .Validation.Delete
+            End With
             
-            ' ================================================================
-            ' 4. clear data only in rows 17-27 (keep formats and validation)
-            ' ================================================================
             Dim rowIdx As Long
-            For rowIdx = 17 To 27
+            For rowIdx = 18 To 28
                 wsPipe.Cells(rowIdx, newCol).ClearContents
             Next rowIdx
             
@@ -979,6 +966,7 @@ Public Sub SyncPipeRangesAndColumns(ByVal colBr As Long)
             wsPipe.Range(wsPipe.Columns(clearStartCol), wsPipe.Columns(lastColAll)).EntireColumn.Hidden = True
             wsPipe.Range(wsPipe.Columns(clearStartCol), wsPipe.Columns(lastColAll)).EntireColumn.ColumnWidth = 8.43
             On Error GoTo 0
+            Call Module_Sync.DeleteShapesInColumnRange(wsPipe, clearStartCol, lastColAll)
         End If
         
         Application.StatusBar = "clearing extra columns... done"
@@ -1034,6 +1022,8 @@ Public Sub SyncPipeRangesAndColumns(ByVal colBr As Long)
     Application.StatusBar = "creating validation for steel, diameter, Riz0..."
     DoEvents
     Call CreatePipeValidation
+    Call PlacePipeSoilAvgButtons(wsPipe, colBr)
+    Call UnlockPipeInputCells(wsPipe, startCol, endCol)
     
     Application.StatusBar = "pipe calculation updated: " & colBr & " columns"
 
@@ -1047,6 +1037,21 @@ CleanExit:
     Application.EnableEvents = oldEnableEvents
     Application.Calculation = oldCalculation
     Application.StatusBar = False
+    On Error GoTo 0
+End Sub
+
+Private Sub UnlockPipeInputCells(ByVal wsPipe As Worksheet, ByVal startCol As Long, ByVal endCol As Long)
+    Dim r As Long
+    Dim c As Long
+    If wsPipe Is Nothing Then Exit Sub
+    If endCol < startCol Then Exit Sub
+    On Error Resume Next
+    For r = 5 To 14
+        For c = startCol To endCol
+            wsPipe.Cells(r, c).Locked = False
+        Next c
+    Next r
+    wsPipe.Range("D3").Locked = False
     On Error GoTo 0
 End Sub
 
@@ -1220,7 +1225,21 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     End If
 
     ' ================================================================
-    ' 4. recalculate
+    ' 4. soilResistivityAvg: results are VBA values, not formulas
+    ' ================================================================
+    Dim soilRng As Range
+    On Error Resume Next
+    Set soilRng = Me.Range("soilResistivityAvg")
+    On Error GoTo 0
+    If Not soilRng Is Nothing Then
+        If Not Intersect(Target, soilRng) Is Nothing Then
+            Call Module_calcPipe.btnPipeCalculate
+            GoTo CleanExit
+        End If
+    End If
+
+    ' ================================================================
+    ' 5. recalculate
     ' ================================================================
     Me.Calculate
 

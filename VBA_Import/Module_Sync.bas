@@ -53,6 +53,8 @@ Public Sub SyncAnodColumns(ByVal ws As Worksheet, ByVal colBr As Long)
         Call SetStatusBar("copying Anod columns 0 / " & totalSteps)
         DoEvents
         
+        Dim firstNewCol As Long
+        firstNewCol = sourceCol + 1
         For newCol = sourceCol + 1 To endCol
             step = step + 1
             Call PulseProgress("copying Anod columns", step, totalSteps)
@@ -76,6 +78,7 @@ Public Sub SyncAnodColumns(ByVal ws As Worksheet, ByVal colBr As Long)
             
             sourceCol = newCol
         Next newCol
+        Call DeleteAnodLayerButtonsInColumns(ws, firstNewCol, endCol)
     End If
     
     If colBr < actualCols Then
@@ -89,6 +92,7 @@ Public Sub SyncAnodColumns(ByVal ws As Worksheet, ByVal colBr As Long)
             DoEvents
             ws.Range(ws.Columns(clearStartCol), ws.Columns(lastCol)).ClearContents
             ws.Range(ws.Columns(clearStartCol), ws.Columns(lastCol)).ClearFormats
+            Call DeleteShapesInColumnRange(ws, clearStartCol, LAST_ANOD_COL)
         End If
     End If
     
@@ -152,6 +156,39 @@ CleanExit:
     Application.Calculation = xlCalculationAutomatic
     Application.StatusBar = False
     DoEvents
+End Sub
+
+' Form Control / shapes survive Columns.Clear. Remove those sitting
+' in dropped columns after a shrink sync (Pipe and Anod).
+Public Sub DeleteShapesInColumnRange(ByVal ws As Worksheet, ByVal firstCol As Long, ByVal lastCol As Long)
+    Dim iShp As Long
+    Dim shp As Shape
+    Dim colShp As Long
+    Dim wasProt As Boolean
+
+    If ws Is Nothing Then Exit Sub
+    If firstCol > lastCol Then Exit Sub
+
+    wasProt = ws.ProtectContents
+    On Error Resume Next
+    If wasProt Then ws.Unprotect Password:=SHEET_PASSWORD
+    On Error GoTo 0
+
+    For iShp = ws.Shapes.Count To 1 Step -1
+        Set shp = Nothing
+        colShp = 0
+        On Error Resume Next
+        Set shp = ws.Shapes(iShp)
+        If Not shp Is Nothing Then colShp = shp.TopLeftCell.Column
+        If colShp >= firstCol And colShp <= lastCol Then shp.Delete
+        On Error GoTo 0
+    Next iShp
+
+    If wasProt Then
+        On Error Resume Next
+        ws.Protect Password:=SHEET_PASSWORD, UserInterfaceOnly:=True
+        On Error GoTo 0
+    End If
 End Sub
 
 ' обновление именованных диапазонов листа Anod

@@ -1,4 +1,4 @@
-﻿Attribute VB_Name = "Module_DataCleanup"
+Attribute VB_Name = "Module_DataCleanup"
 
 ' ================================================================
 ' module: Module_DataCleanup
@@ -760,6 +760,9 @@ Sub CleanTableMounting()
     ' способ монтажа
     ' installation method
     targetColumns.Add Ru("0441 043F 043E 0441 043E 0431 0020 043C 043E 043D 0442 0430 0436 0430")
+    ' комплектация
+    ' delivery set
+    targetColumns.Add Ru("043A 043E 043C 043F 043B 0435 043A 0442 0430 0446 0438 044F")
     
     ' try to find the table on sheet "ListAG"
     On Error Resume Next

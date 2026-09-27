@@ -101,23 +101,27 @@ Private Function NeedRestorePipeNames(ByVal wsPipe As Worksheet) As Boolean
     End If
 
     Dim rangeNames As Variant
+    Dim rangeRows As Variant
+    ' input: 5 grade, 6 rho steel, 7 D, 8 wall, 9 Ls, 10 soil avg, 11 Rins0, 12 H, 13 T, 14 k_ins
     rangeNames = Array( _
         "pipeSteelGrade", "pipeSteelResistivity", "pipeDiameter", _
-        "pipeWallThickness", "pipeInsulationResistivityStartLife", "pipeLayingDepth", _
-        "soilResistivityAvg", "serviceLifeDesigned", "pipeResistivityChangeFactor", _
+        "pipeWallThickness", "pipeLengthSegment", "soilResistivityAvg", _
+        "pipeInsulationResistivityStartLife", "pipeLayingDepth", "serviceLifeDesigned", _
+        "pipeResistivityChangeFactor", _
         "pipeAlongResistance", "soilResistanceAroundPipe", "pipeTransientResistivity", _
         "soilResistivityAroundPipe", "pipeInsulationResistanceStartLife", _
         "pipeTransientResistance", "pipeTransientResistanceEndLife", _
         "factorPropagationCurrentAlongPipe", "factorPropagationCurrentAlongPipeEndLife", _
         "pipeImpedance", "pipeImpedanceEndLife" _
     )
+    rangeRows = Array(5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28)
 
-    Dim nm As Variant
+    Dim nameIndex As Long
     Dim rng As Range
-    For Each nm In rangeNames
+    For nameIndex = LBound(rangeNames) To UBound(rangeNames)
         Set rng = Nothing
         Err.Clear
-        Set rng = wsPipe.names(CStr(nm)).RefersToRange
+        Set rng = wsPipe.names(CStr(rangeNames(nameIndex))).RefersToRange
         If Err.Number <> 0 Or rng Is Nothing Then
             NeedRestorePipeNames = True
             Exit Function
@@ -126,9 +130,14 @@ Private Function NeedRestorePipeNames(ByVal wsPipe As Worksheet) As Boolean
             NeedRestorePipeNames = True
             Exit Function
         End If
-    Next nm
+        If rng.row <> CLng(rangeRows(nameIndex)) Then
+            NeedRestorePipeNames = True
+            Exit Function
+        End If
+    Next nameIndex
 
     Dim scalarNames As Variant
+    Dim nm As Variant
     scalarNames = Array("pipeDifferentParametersNum", "pipeInputResistance", "pipeInputResistanceEndLife")
     For Each nm In scalarNames
         Set rng = Nothing
@@ -141,6 +150,26 @@ Private Function NeedRestorePipeNames(ByVal wsPipe As Worksheet) As Boolean
         If rng.rows.count <> 1 Or rng.Columns.count <> 1 Then
             NeedRestorePipeNames = True
             Exit Function
+        End If
+        If rng.Column <> 4 Then
+            NeedRestorePipeNames = True
+            Exit Function
+        End If
+        If StrComp(CStr(nm), "pipeDifferentParametersNum", vbTextCompare) = 0 Then
+            If rng.row <> 3 Then
+                NeedRestorePipeNames = True
+                Exit Function
+            End If
+        ElseIf StrComp(CStr(nm), "pipeInputResistance", vbTextCompare) = 0 Then
+            If rng.row <> 29 Then
+                NeedRestorePipeNames = True
+                Exit Function
+            End If
+        ElseIf StrComp(CStr(nm), "pipeInputResistanceEndLife", vbTextCompare) = 0 Then
+            If rng.row <> 30 Then
+                NeedRestorePipeNames = True
+                Exit Function
+            End If
         End If
     Next nm
 
@@ -166,8 +195,8 @@ Private Sub ApplyPipeNames(ByVal wsPipe As Worksheet, ByVal colBr As Long)
                      Application.WorksheetFunction.Min(1024, endCol))
     
     Call SetPipeName(wsPipe, "pipeDifferentParametersNum", wsPipe.Range("D3"))
-    Call SetPipeName(wsPipe, "pipeInputResistance", wsPipe.Range("D28"))
-    Call SetPipeName(wsPipe, "pipeInputResistanceEndLife", wsPipe.Range("D29"))
+    Call SetPipeName(wsPipe, "pipeInputResistance", wsPipe.Range("D29"))
+    Call SetPipeName(wsPipe, "pipeInputResistanceEndLife", wsPipe.Range("D30"))
     
     Dim rangeNames As Variant
     Dim rangeRows As Variant
@@ -177,9 +206,10 @@ Private Sub ApplyPipeNames(ByVal wsPipe As Worksheet, ByVal colBr As Long)
         "pipeSteelResistivity", _
         "pipeDiameter", _
         "pipeWallThickness", _
+        "pipeLengthSegment", _
+        "soilResistivityAvg", _
         "pipeInsulationResistivityStartLife", _
         "pipeLayingDepth", _
-        "soilResistivityAvg", _
         "serviceLifeDesigned", _
         "pipeResistivityChangeFactor", _
         "pipeAlongResistance", _
@@ -195,7 +225,8 @@ Private Sub ApplyPipeNames(ByVal wsPipe As Worksheet, ByVal colBr As Long)
         "pipeImpedanceEndLife" _
     )
     
-    rangeRows = Array(5, 6, 7, 8, 9, 10, 11, 12, 13, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27)
+    ' input: 5 grade, 6 rho steel, 7 D, 8 wall, 9 Ls, 10 soil avg, 11 Rins0, 12 H, 13 T, 14 k_ins
+    rangeRows = Array(5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28)
     
     Dim nameIndex As Long
     Dim startRow As Long

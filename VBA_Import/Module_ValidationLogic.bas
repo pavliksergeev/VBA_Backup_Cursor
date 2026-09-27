@@ -114,7 +114,7 @@ Public Sub RefreshValidationForColumn(ByVal ws As Worksheet, ByVal filterCol As 
     Call SetValidationWithRange(ws.Cells(FILTER_START_ROW + 1, filterCol), "TempMountList", filterCol)
 
     Dim installTypeList As String
-    installTypeList = Module_ValidationLists.GetInstallTypeListFromMountType(curMountType)
+    installTypeList = Module_ValidationLists.GetInstallTypeListFromMountType(CStr(curMountType), curDelivery)
     If installTypeList = "" Then installTypeList = Module_ValidationLists.GetAllInstallTypes()
     If DEBUG_MODE Then Debug.Print "RefreshValidationForColumn: installTypeList = " & installTypeList
     Call UpdateTempList(ws, "TempInstallList", installTypeList, filterCol)
@@ -335,7 +335,7 @@ Public Sub UpdateAllFiltersCross(ByVal ws As Worksheet, ByVal targetCol As Long)
     End If
 
     Dim installTypeList As String
-    installTypeList = Module_ValidationLists.GetInstallTypeListFromMountType(curMountType)
+    installTypeList = Module_ValidationLists.GetInstallTypeListFromMountType(CStr(curMountType), curDelivery)
     If installTypeList <> "" Then
         Call UpdateTempList(ws, "TempInstallList", installTypeList, targetCol)
         Call SetValidationWithRange(ws.Cells(FILTER_START_ROW + 2, targetCol), "TempInstallList", targetCol)
@@ -504,7 +504,7 @@ Public Sub AutoFillFiltersFromModel(ByVal ws As Worksheet, ByVal col As Long, By
     
     If Not IsEmpty(mountType) And mountType <> "" Then
         Dim installType As String
-        installType = Module_ValidationLists.GetInstallationTypeFromMountType(mountType)
+        installType = Module_ValidationLists.GetInstallationTypeFromMountType(CStr(mountType), completion)
         If installType <> "" Then
             If IsEmpty(ws.Cells(FILTER_START_ROW + 2, col).Value) Or ws.Cells(FILTER_START_ROW + 2, col).Value = "" Then
                 ws.Cells(FILTER_START_ROW + 2, col).Value = installType

@@ -1,17 +1,17 @@
-﻿Attribute VB_Name = "Module_RunAllAGTests"
+Attribute VB_Name = "Module_RunAllAGTests"
 
 Option Explicit
 
 Private agTestRunning As Boolean
 
 ' ================================================================
-' полный каталог: каждая модель typeAG из TableAG x все typeInstallationAG
-' из TableMounting, допустимые для typeMountingAG этой модели.
-' эталонов TableAllTest нет: пройден, если расчёт дал числовые R/N/T/G
+' полный каталог: каждая модель typeAG из TableAG x typeInstallationAG
+' из TableMounting с тем же типом монтажа и комплектацией.
+' эталонов TableAllTest нет: пройден, если расчёт дал ненулевые числовые R/N/T/G
 ' и строка 39 заполнена. лист отчёта: TestReportAG.
-' catalog: each TableAG typeAG model x every TableMounting
-' typeInstallationAG allowed for that model's typeMountingAG.
-' no TableAllTest goldens: pass if calc yields numeric R/N/T/G
+' catalog: each TableAG typeAG model x TableMounting
+' typeInstallationAG for that model's typeMountingAG and комплектация.
+' no TableAllTest goldens: pass if calc yields non-zero numeric R/N/T/G
 ' and row 39 is filled. report sheet: TestReportAG.
 ' ================================================================
 Public Sub RunAllAGTests()
@@ -248,7 +248,7 @@ Public Sub RunAllAGTests()
     Call FillPipeNamedRangeAG("pipeWallThickness", 0.017)
     Call FillPipeNamedRangeAG("pipeInsulationResistivityStartLife", 50000)
     Call FillPipeNamedRangeAG("pipeLayingDepth", 1.6)
-    Call FillPipeNamedRangeAG("soilResistivityAvg", 50)
+    Call FillPipeNamedRangeAG("soilResistivityAvg", 19)
     Call FillPipeNamedRangeAG("serviceLifeDesigned", 30)
     Call FillPipeNamedRangeAG("pipeResistivityChangeFactor", 0.11)
 
@@ -270,6 +270,8 @@ Public Sub RunAllAGTests()
     Application.Calculation = xlCalculationManual
     Application.DisplayAlerts = False
     Call LogTrace("PIPE: columns synced")
+
+    wsPipe.Cells(wsPipe.Range("pipeInsulationResistivityStartLife").row, START_COL + 1).Value = 67300
 
     Call SetStatusBar("pipe calculation...")
     DoEvents
@@ -299,7 +301,7 @@ Public Sub RunAllAGTests()
     Call LogTrace("PIPE: R_in = " & R_in & ", R_in_end = " & R_in_end)
 
     Dim expR_in_end As Double
-    expR_in_end = 0.0242
+    expR_in_end = 0.024
     Dim devR As Double
     If expR_in_end <> 0 Then
         devR = Abs((R_in_end - expR_in_end) / expR_in_end) * 100
@@ -327,7 +329,7 @@ Public Sub RunAllAGTests()
     wsAnod.Range("maxProtectPotential").Value = -1.15
     wsAnod.Range("naturalPotential").Value = -0.55
     wsAnod.Range("factorMutualInfluence").Value = 0.5
-    wsAnod.Range("pipeLength").Value = 350000
+    wsAnod.Range("pipeLength").Value = 300000
 
     Call SetStatusBar("protective zone calculation...")
     DoEvents
@@ -450,6 +452,13 @@ Public Sub RunAllAGTests()
             Call LogTrace("SCENARIO " & (scIdx + 1) & ": row 39 empty after InsertAGData")
         End If
     Next scIdx
+
+    Call LogTrace("ANOD: PlaceAnodLayerButtons after typeMountingAG fill")
+    On Error Resume Next
+    Call PlaceAnodLayerButtons(wsAnod, pipeCountLong)
+    If Err.Number <> 0 Then Call LogTrace("ANOD: PlaceAnodLayerButtons err " & Err.Number & " " & Err.Description)
+    Err.Clear
+    On Error GoTo CleanExit
 
     If Timer - startTime > TIMEOUT_SECONDS Then
         Call LogTrace("SCENARIO: timeout exceeded before anode calc")
@@ -595,19 +604,18 @@ End Sub
 
 ' ================================================================
 ' TableAG (AG_Material / AG_MountType / AG_Completion / AG_Model)
-' x TableMounting col4 typeMountingAG -> col3 typeInstallationAG
+' x TableMounting: тип монтажа AND комплектация -> typeInstallationAG
 ' ================================================================
 Private Function LoadScenariosFromTableAGAndMounting() As Variant
     Dim matVals As Variant, mountVals As Variant, shipVals As Variant, modelVals As Variant
-    Dim byMount As Collection
     Dim scCol As Collection
-    Dim instCol As Collection
     Dim nAg As Long
     Dim iAg As Long
     Dim iInst As Long
     Dim matRaw As String, mountRaw As String, shipRaw As String, modelRaw As String
-    Dim mountKey As String
     Dim instRaw As String
+    Dim instList As String
+    Dim instItems As Variant
     Dim scenarios() As Variant
     Dim iSc As Long
 
@@ -620,12 +628,6 @@ Private Function LoadScenariosFromTableAGAndMounting() As Variant
                   "named ranges AG_Material / AG_MountType / AG_Completion / AG_Model not found"
     End If
 
-    Set byMount = LoadInstallsByMountType()
-    If byMount Is Nothing Then
-        Err.Raise vbObjectError + 62, "LoadScenariosFromTableAGAndMounting", _
-                  "table '" & TABLE_MOUNTING & "' not found"
-    End If
-
     nAg = UBound(matVals, 1)
     Set scCol = New Collection
 
@@ -635,20 +637,19 @@ Private Function LoadScenariosFromTableAGAndMounting() As Variant
         matRaw = CellTextAG(matVals, iAg)
         mountRaw = CellTextAG(mountVals, iAg)
         shipRaw = CellTextAG(shipVals, iAg)
-        mountKey = Module_ValidationLists.NormalizeFilterText(mountRaw)
 
-        Set instCol = Nothing
-        On Error Resume Next
-        Set instCol = byMount(mountKey)
-        On Error GoTo 0
-        If instCol Is Nothing Then
-            Call LogTrace("AGTEST: no TableMounting installs for mount='" & mountRaw & "' model='" & modelRaw & "'")
+        instList = Module_ValidationLists.GetInstallTypeListFromMountType(mountRaw, shipRaw)
+        If Len(instList) = 0 Then
+            Call LogTrace("AGTEST: no TableMounting installs for mount='" & mountRaw & "' ship='" & shipRaw & "' model='" & modelRaw & "'")
             GoTo NextAgRow
         End If
 
-        For iInst = 1 To instCol.Count
-            instRaw = CStr(instCol(iInst))
+        instItems = Split(instList, ",")
+        For iInst = LBound(instItems) To UBound(instItems)
+            instRaw = Trim$(CStr(instItems(iInst)))
+            If Len(instRaw) = 0 Then GoTo NextInst
             scCol.Add Array("AG" & CStr(scCol.Count + 1), matRaw, mountRaw, instRaw, shipRaw, modelRaw)
+NextInst:
         Next iInst
 NextAgRow:
     Next iAg
@@ -664,76 +665,6 @@ NextAgRow:
     Next iSc
 
     LoadScenariosFromTableAGAndMounting = scenarios
-End Function
-
-' TableMounting: ListColumns(4)=typeMountingAG, ListColumns(3)=typeInstallationAG
-Private Function LoadInstallsByMountType() As Collection
-    Dim tbl As ListObject
-    Dim mVals As Variant, iVals As Variant
-    Dim byMount As Collection
-    Dim instCol As Collection
-    Dim nRow As Long
-    Dim i As Long
-    Dim mountKey As String
-    Dim mountRaw As String, instRaw As String
-
-    Set tbl = FindTableMounting()
-    If tbl Is Nothing Then Exit Function
-    If tbl.DataBodyRange Is Nothing Then Exit Function
-
-    mVals = As2DAG(tbl.ListColumns(4).DataBodyRange.Value)
-    iVals = As2DAG(tbl.ListColumns(3).DataBodyRange.Value)
-    nRow = UBound(mVals, 1)
-
-    Set byMount = New Collection
-    For i = 1 To nRow
-        mountRaw = CellTextAG(mVals, i)
-        instRaw = CellTextAG(iVals, i)
-        If Len(mountRaw) = 0 Or Len(instRaw) = 0 Then GoTo NextMountRow
-        mountKey = Module_ValidationLists.NormalizeFilterText(mountRaw)
-        If Len(mountKey) = 0 Then GoTo NextMountRow
-
-        Set instCol = Nothing
-        On Error Resume Next
-        Set instCol = byMount(mountKey)
-        On Error GoTo 0
-        If instCol Is Nothing Then
-            Set instCol = New Collection
-            byMount.Add instCol, mountKey
-        End If
-        On Error Resume Next
-        instCol.Add instRaw, instRaw
-        Err.Clear
-        On Error GoTo 0
-NextMountRow:
-    Next i
-
-    Set LoadInstallsByMountType = byMount
-End Function
-
-Private Function FindTableMounting() As ListObject
-    Dim ws As Worksheet
-    Dim tbl As ListObject
-
-    On Error Resume Next
-    Set ws = thisWorkbook.Worksheets(SHEET_LIST_AG)
-    If Not ws Is Nothing Then Set tbl = ws.ListObjects(TABLE_MOUNTING)
-    If Not tbl Is Nothing Then
-        Set FindTableMounting = tbl
-        On Error GoTo 0
-        Exit Function
-    End If
-
-    For Each ws In thisWorkbook.Worksheets
-        Set tbl = Nothing
-        Set tbl = ws.ListObjects(TABLE_MOUNTING)
-        If Not tbl Is Nothing Then
-            Set FindTableMounting = tbl
-            On Error GoTo 0
-            Exit Function
-        End If
-    Next ws
-    On Error GoTo 0
 End Function
 
 Private Function LoadName2DAG(ByVal nm As String) As Variant
@@ -771,7 +702,9 @@ Private Function HasNumericValue(ByVal v As Variant) As Boolean
     If IsError(v) Then Exit Function
     If IsEmpty(v) Then Exit Function
     If Len(Trim$(CStr(v))) = 0 Then Exit Function
-    HasNumericValue = IsNumeric(v)
+    If Not IsNumeric(v) Then Exit Function
+    If CDbl(v) = 0 Then Exit Function
+    HasNumericValue = True
 End Function
 
 Private Sub WriteSanityRow(ByVal wsReport As Worksheet, ByVal r As Long, _
