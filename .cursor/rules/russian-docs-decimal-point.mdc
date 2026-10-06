@@ -1,0 +1,10 @@
+---
+description: Decimal point in generated Russian documents
+alwaysApply: true
+---
+
+# Decimal separator in Russian documents
+
+When generating or updating Russian-language documents (Word, Markdown, comments for the user, manuals in `docs/`), write the decimal separator as a period: `0.325`, `1.19`, `0.98`.
+
+Do not use a comma as the decimal mark (`0,325`, `1,19`) except when quoting an OS/Excel locale string that literally contains a comma.

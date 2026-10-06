@@ -216,7 +216,7 @@ Private Function GetInsulationResistivityList() As String
     vals = tbl.ListColumns(2).DataBodyRange.Value
     
     If Not IsArray(vals) Then
-        GetInsulationResistivityList = CStr(vals)
+        GetInsulationResistivityList = NumberToValidationText(vals)
         Exit Function
     End If
     
@@ -241,7 +241,8 @@ Private Function GetInsulationResistivityList() As String
     Next i
     
     For Each item In col
-        If result <> "" Then result = result & "," & item Else result = item
+        If result <> "" Then result = result & ","
+        result = result & NumberToValidationText(item)
     Next item
     
     GetInsulationResistivityList = result
@@ -312,7 +313,7 @@ Private Sub UpdateWallThicknessValidation(ByVal diamCell As Range, _
                 If validationString <> "" Then
                     validationString = validationString & ","
                 End If
-                validationString = validationString & CStr(thicknessList(idx))
+                validationString = validationString & NumberToValidationText(thicknessList(idx))
             Next idx
             
             ' unprotect the sheet
@@ -585,13 +586,10 @@ Public Sub CreatePipeValidation()
     End If
     
     ' --- 3. validation for pipeResistivityChangeFactor (fixed list: 0.05, 0.08, 0.11) ---
-    Dim decSep As String
-    decSep = Application.International(xlDecimalSeparator)
-    
     Dim insListFixed As String
-    insListFixed = "0" & decSep & "05," & _
-                   "0" & decSep & "08," & _
-                   "0" & decSep & "11"
+    insListFixed = NumberToValidationText(0.05) & "," & _
+                   NumberToValidationText(0.08) & "," & _
+                   NumberToValidationText(0.11)
     
     Dim changeFactorRow As Long
     On Error Resume Next
@@ -748,7 +746,7 @@ Private Function GetDiameterList() As String
     vals = tbl.ListColumns(1).DataBodyRange.Value
     
     If Not IsArray(vals) Then
-        GetDiameterList = CStr(vals)
+        GetDiameterList = NumberToValidationText(vals)
         Exit Function
     End If
     
@@ -771,7 +769,8 @@ Private Function GetDiameterList() As String
     Next i
     
     For Each item In col
-        If result <> "" Then result = result & "," & item Else result = item
+        If result <> "" Then result = result & ","
+        result = result & NumberToValidationText(item)
     Next item
     
     GetDiameterList = result

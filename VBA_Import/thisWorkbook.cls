@@ -275,3 +275,8 @@ CleanExit:
         MsgBox "error in workbook_open: " & errDesc, vbCritical
     End If
 End Sub
+
+Private Sub Workbook_BeforeClose(Cancel As Boolean)
+    On Error Resume Next
+    Call RestoreDecimalSeparator
+End Sub

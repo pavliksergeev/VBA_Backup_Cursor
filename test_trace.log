@@ -1,0 +1,135 @@
+=== test log started at 2026-09-20 02:03:41 ===
+2026-09-20 02:03:41  TEST: started
+2026-09-20 02:03:41  TEST: programmatic mode enabled
+2026-09-20 02:03:41  TEST: clearing named ranges on Anod before start
+2026-09-20 02:03:41  CLEAR: starting cleanup of named ranges on Anod
+2026-09-20 02:03:41  CLEAR: clearing 'typeMaterial'
+2026-09-20 02:03:41  CLEAR: clearing 'typeMountingAG'
+2026-09-20 02:03:41  CLEAR: clearing 'typeInstallationAG'
+2026-09-20 02:03:41  CLEAR: clearing 'typeDeliveryAG'
+2026-09-20 02:03:41  CLEAR: clearing 'typeAG'
+2026-09-20 02:03:41  CLEAR: clearing 'diameterAG'
+2026-09-20 02:03:41  CLEAR: clearing 'lengthElectrodeAG'
+2026-09-20 02:03:41  CLEAR: clearing 'cokeBreezeDiameterAG'
+2026-09-20 02:03:41  CLEAR: clearing 'cokeBreezelengthElectrodeAG'
+2026-09-20 02:03:41  CLEAR: clearing 'massOneElectrodeAG'
+2026-09-20 02:03:41  CLEAR: clearing 'dissolutionRateAG'
+2026-09-20 02:03:41  CLEAR: clearing 'ratedCurrent'
+2026-09-20 02:03:41  CLEAR: clearing 'resistivityMaterialAG'
+2026-09-20 02:03:41  CLEAR: clearing 'cokeBreezeResistivityAG'
+2026-09-20 02:03:41  CLEAR: clearing 'specificRatedCurrent'
+2026-09-20 02:03:41  CLEAR: clearing 'specificMaccOneMeterAG'
+2026-09-20 02:03:41  CLEAR: clearing 'resistanceEndLifeAG'
+2026-09-20 02:03:41  CLEAR: clearing 'lengthWorkPartDeepAG'
+2026-09-20 02:03:41  CLEAR: clearing 'oneElectrodeResistanceAG'
+2026-09-20 02:03:41  CLEAR: clearing 'oneElectrodeResistanceHorizAG'
+2026-09-20 02:03:41  CLEAR: clearing 'numElectrodesAG'
+2026-09-20 02:03:41  CLEAR: clearing 'weightWithoutFillingAG'
+2026-09-20 02:03:41  CLEAR: clearing 'serviceLifeAG'
+2026-09-20 02:03:42  CLEAR: clearing 'serviceLifeDeviation'
+2026-09-20 02:03:42  CLEAR: clearing 'correctResistanceAG'
+2026-09-20 02:03:42  CLEAR: cleanup of named ranges finished
+2026-09-20 02:03:42  TEST: named ranges cleaned, starting test
+2026-09-20 02:03:42  CHECK: verifying local names
+2026-09-20 02:03:42  CHECK: local names verified
+2026-09-20 02:03:42  CHECK: verifying named range dimensions
+2026-09-20 02:03:42  CHECK: all named ranges have correct dimensions (1x10 on constant rows)
+2026-09-20 02:03:42  PIPE: preparing data
+2026-09-20 02:03:42  PIPE: ForceSyncFromD3 (columns + validation lists)
+2026-09-20 02:03:47  PIPE: columns synced, validation lists created
+2026-09-20 02:03:47  PIPE: running btnPipeCalculate
+2026-09-20 02:03:47  PIPE: calculation finished
+2026-09-20 02:03:47  PIPE: R_in = 0.112075755002088, R_in_end = 0.0241467929742514
+2026-09-20 02:03:47  ANOD: preparing general parameters
+2026-09-20 02:03:47  ANOD: running CalcProtectiveZone
+2026-09-20 02:03:55  ANOD: protective zone calculated
+2026-09-20 02:03:55  ANOD: test mode restored after CalcProtectiveZone
+2026-09-20 02:03:55  TEST: loaded 10 scenarios from TableAllTest
+2026-09-20 02:03:55  SCENARIO 1: start (col=4)
+2026-09-20 02:03:55  SCENARIO 1: filters filled
+2026-09-20 02:03:55  SCENARIO 1: validation refreshed
+2026-09-20 02:03:55  SCENARIO 1: data inserted
+2026-09-20 02:03:55  SCENARIO 2: start (col=5)
+2026-09-20 02:03:55  SCENARIO 2: filters filled
+2026-09-20 02:03:55  SCENARIO 2: validation refreshed
+2026-09-20 02:03:56  SCENARIO 2: data inserted
+2026-09-20 02:03:56  SCENARIO 3: start (col=6)
+2026-09-20 02:03:56  SCENARIO 3: filters filled
+2026-09-20 02:03:56  SCENARIO 3: validation refreshed
+2026-09-20 02:03:56  SCENARIO 3: data inserted
+2026-09-20 02:03:56  SCENARIO 4: start (col=7)
+2026-09-20 02:03:56  SCENARIO 4: filters filled
+2026-09-20 02:03:56  SCENARIO 4: validation refreshed
+2026-09-20 02:03:56  SCENARIO 4: data inserted
+2026-09-20 02:03:56  SCENARIO 5: start (col=8)
+2026-09-20 02:03:56  SCENARIO 5: filters filled
+2026-09-20 02:03:56  SCENARIO 5: validation refreshed
+2026-09-20 02:03:56  SCENARIO 5: data inserted
+2026-09-20 02:03:56  SCENARIO 6: start (col=9)
+2026-09-20 02:03:56  SCENARIO 6: filters filled
+2026-09-20 02:03:56  SCENARIO 6: validation refreshed
+2026-09-20 02:03:57  SCENARIO 6: data inserted
+2026-09-20 02:03:57  SCENARIO 7: start (col=10)
+2026-09-20 02:03:57  SCENARIO 7: filters filled
+2026-09-20 02:03:57  SCENARIO 7: validation refreshed
+2026-09-20 02:03:57  SCENARIO 7: data inserted
+2026-09-20 02:03:57  SCENARIO 8: start (col=11)
+2026-09-20 02:03:57  SCENARIO 8: filters filled
+2026-09-20 02:03:57  SCENARIO 8: validation refreshed
+2026-09-20 02:03:57  SCENARIO 8: data inserted
+2026-09-20 02:03:57  SCENARIO 9: start (col=12)
+2026-09-20 02:03:57  SCENARIO 9: filters filled
+2026-09-20 02:03:58  SCENARIO 9: validation refreshed
+2026-09-20 02:03:58  SCENARIO 9: data inserted
+2026-09-20 02:03:58  SCENARIO 10: start (col=13)
+2026-09-20 02:03:58  SCENARIO 10: filters filled
+2026-09-20 02:03:58  SCENARIO 10: validation refreshed
+2026-09-20 02:03:58  SCENARIO 10: data inserted
+2026-09-20 02:03:59  ANOD: one full calc for all scenario columns
+2026-09-20 02:03:59  SCENARIO 1: reading results (col=4)
+2026-09-20 02:03:59  SCENARIO 1: report rows written and colored
+2026-09-20 02:03:59  SCENARIO 2: reading results (col=5)
+2026-09-20 02:03:59  SCENARIO 2: report rows written and colored
+2026-09-20 02:03:59  SCENARIO 3: reading results (col=6)
+2026-09-20 02:03:59  SCENARIO 3: report rows written and colored
+2026-09-20 02:03:59  SCENARIO 4: reading results (col=7)
+2026-09-20 02:03:59  SCENARIO 4: report rows written and colored
+2026-09-20 02:03:59  SCENARIO 5: reading results (col=8)
+2026-09-20 02:03:59  SCENARIO 5: report rows written and colored
+2026-09-20 02:03:59  SCENARIO 6: reading results (col=9)
+2026-09-20 02:03:59  SCENARIO 6: report rows written and colored
+2026-09-20 02:03:59  SCENARIO 7: reading results (col=10)
+2026-09-20 02:03:59  SCENARIO 7: report rows written and colored
+2026-09-20 02:03:59  SCENARIO 8: reading results (col=11)
+2026-09-20 02:03:59  SCENARIO 8: report rows written and colored
+2026-09-20 02:03:59  SCENARIO 9: reading results (col=12)
+2026-09-20 02:03:59  SCENARIO 9: report rows written and colored
+2026-09-20 02:03:59  SCENARIO 10: reading results (col=13)
+2026-09-20 02:03:59  SCENARIO 10: report rows written and colored
+2026-09-20 02:03:59  FIN-01: before final validation loop
+2026-09-20 02:03:59  FIN-03: after final validation loop
+2026-09-20 02:03:59  FIN-04: before AutoFit
+2026-09-20 02:03:59  FIN-05: after AutoFit
+2026-09-20 02:03:59  FIN-06: before Borders
+2026-09-20 02:03:59  FIN-07: after Borders
+2026-09-20 02:03:59  FIN-08: before Bold/Size
+2026-09-20 02:03:59  FIN-09: after Bold/Size
+2026-09-20 02:03:59  FIN-10: before CountIf
+2026-09-20 02:03:59  FIN-11: after CountIf, pass=46, fail=0
+2026-09-20 02:03:59  === test report (10 scenarios) ===
+2026-09-20 02:03:59  passed: 46
+2026-09-20 02:03:59  failed: 0
+2026-09-20 02:04:00  total checks: 46
+2026-09-20 02:04:00  FIN-12: before CheckNamedRanges
+2026-09-20 02:04:00  CheckNamedRanges: all ranges have correct dimensions (1x10 on constant rows)
+2026-09-20 02:04:00  FIN-13: after CheckNamedRanges
+2026-09-20 02:04:00  CE-01: entered CleanExit
+2026-09-20 02:04:00  CE-02: resetting isProgrammaticPipeCountChange
+2026-09-20 02:04:00  CE-03: isProgrammaticPipeCountChange = False
+2026-09-20 02:04:00  CE-04: restoring application state
+2026-09-20 02:04:00  CE-05: state restored (calc/events still test mode)
+2026-09-20 02:04:00  CE-07: activating report sheet
+2026-09-20 02:04:00  CE-08: report sheet activated
+2026-09-20 02:04:00  CE-12: before final MsgBox
+2026-09-20 02:04:05  CE-13: after final MsgBox
+2026-09-20 02:04:05  CE-DONE: testRunning = False, exiting
