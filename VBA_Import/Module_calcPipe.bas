@@ -374,7 +374,7 @@ Else
                 Rp = 500
                 Exit For
             End If
-            Rp = rho_avg * D / 2 * Log(ln_arg)
+            Rp = rho_avg * D / (2 * pi) * Log(ln_arg)
             If Rp <= 0 Then
                 Rp = 500
                 Exit For
